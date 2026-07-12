@@ -1,0 +1,71 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "request": "launch",
+      "name": "Client",
+      "presentation": {
+        "group": "Mod Development - thermalsystems",
+        "order": 0
+      },
+      "projectName": "thermalsystems",
+      "mainClass": "net.neoforged.devlaunch.Main",
+      "args": [
+        "@/home/only/RiderProjects/Marie\u0027s Thermal Systems/build/moddev/clientRunProgramArgs.txt"
+      ],
+      "vmArgs": [
+        "@/home/only/RiderProjects/Marie\u0027s Thermal Systems/build/moddev/clientRunVmArgs.txt",
+        "-Dfml.modFolders\u003dthermalsystems%%/home/only/RiderProjects/Marie\u0027s Thermal Systems/bin/main"
+      ],
+      "cwd": "${workspaceFolder}/run",
+      "env": {},
+      "console": "internalConsole",
+      "shortenCommandLine": "none"
+    },
+    {
+      "type": "java",
+      "request": "launch",
+      "name": "Data",
+      "presentation": {
+        "group": "Mod Development - thermalsystems",
+        "order": 1
+      },
+      "projectName": "thermalsystems",
+      "mainClass": "net.neoforged.devlaunch.Main",
+      "args": [
+        "@/home/only/RiderProjects/Marie\u0027s Thermal Systems/build/moddev/dataRunProgramArgs.txt"
+      ],
+      "vmArgs": [
+        "@/home/only/RiderProjects/Marie\u0027s Thermal Systems/build/moddev/dataRunVmArgs.txt",
+        "-Dfml.modFolders\u003dthermalsystems%%/home/only/RiderProjects/Marie\u0027s Thermal Systems/bin/main"
+      ],
+      "cwd": "${workspaceFolder}/run",
+      "env": {},
+      "console": "internalConsole",
+      "shortenCommandLine": "none"
+    },
+    {
+      "type": "java",
+      "request": "launch",
+      "name": "Server",
+      "presentation": {
+        "group": "Mod Development - thermalsystems",
+        "order": 2
+      },
+      "projectName": "thermalsystems",
+      "mainClass": "net.neoforged.devlaunch.Main",
+      "args": [
+        "@/home/only/RiderProjects/Marie\u0027s Thermal Systems/build/moddev/serverRunProgramArgs.txt"
+      ],
+      "vmArgs": [
+        "@/home/only/RiderProjects/Marie\u0027s Thermal Systems/build/moddev/serverRunVmArgs.txt",
+        "-Dfml.modFolders\u003dthermalsystems%%/home/only/RiderProjects/Marie\u0027s Thermal Systems/bin/main"
+      ],
+      "cwd": "${workspaceFolder}/run",
+      "env": {},
+      "console": "internalConsole",
+      "shortenCommandLine": "none"
+    }
+  ]
+}

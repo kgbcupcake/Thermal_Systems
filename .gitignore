@@ -1,0 +1,16 @@
+# Gradle
+.gradle/
+build/
+
+# NeoForge run/dev artifacts
+run/
+src/generated/
+
+# IDE
+.idea/
+*.iml
+out/
+bin/
+
+# OS
+.DS_Store
