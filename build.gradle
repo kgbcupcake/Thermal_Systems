@@ -72,6 +72,21 @@ dependencies {
     // See integration/mekanism/MekanismIntegration.java.
     compileOnly "mekanism:Mekanism:${mekanism_version}:api"
 
+    // Compile-time only: Ender IO integration must remain optional at runtime.
+    // See integration/enderio/EnderIOIntegration.java. Ender IO 8.2.11-beta (the current
+    // release for 1.21.1/NeoForge 21.1.x) is not published on mavenCentral or the ModMaven
+    // mirror above, so this references the verified jar directly rather than guessing at an
+    // unreachable coordinate/repository.
+    compileOnly files("libs/enderio-${enderio_version}.jar")
+
+    // Test-scoped only, mirroring the two dependencies above: capability-registration
+    // tests use stub implementations of the target mods' public API interfaces, which
+    // requires these interfaces on the test runtime classpath too (unlike the compileOnly
+    // dependencies above, this does not affect the shipped mod jar's optional-at-runtime
+    // guarantee - it only affects how this test source set itself is run).
+    testImplementation "me.desht.pneumaticcraft:pneumaticcraft-repressurized:${pneumaticcraft_version}"
+    testImplementation "mekanism:Mekanism:${mekanism_version}:api"
+
     testImplementation platform('org.junit:junit-bom:5.10.2')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -94,6 +109,7 @@ tasks.named('processResources', ProcessResources).configure {
         loader_version_range   : loader_version_range,
         pneumaticcraft_version_range: pneumaticcraft_version_range,
         mekanism_version_range : mekanism_version_range,
+        enderio_version_range  : enderio_version_range,
         mod_id                 : mod_id,
         mod_name               : mod_name,
         mod_license            : mod_license,

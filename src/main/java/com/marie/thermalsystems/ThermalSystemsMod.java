@@ -19,7 +19,7 @@ import net.neoforged.fml.config.ModConfig;
  * {@link com.marie.thermalsystems.steam.SteamNetworkManager},
  * {@link com.marie.thermalsystems.registry.ThermalCommands}), so this class only wires config,
  * the DeferredRegisters, and optional integrations. PneumaticCraftIntegration,
- * EnderIOIntegration, and MekanismIntegration are only ever loaded when their respective mods
+ * MekanismIntegration, and EnderIOIntegration are only ever loaded when their respective mods
  * are present - the ModList checks below must stay guards around the calls, never direct class
  * references, so the mod still loads with any of them absent.
  */
@@ -39,12 +39,12 @@ public class ThermalSystemsMod {
             PneumaticCraftIntegration.init(modEventBus);
         }
 
-        if (ModList.get().isLoaded(EnderIOIntegration.ENDERIO_MOD_ID)) {
-            EnderIOIntegration.init(modEventBus);
-        }
-
         if (ModList.get().isLoaded(MekanismIntegration.MEKANISM_MOD_ID)) {
             MekanismIntegration.init(modEventBus);
+        }
+
+        if (ModList.get().isLoaded(EnderIOIntegration.ENDERIO_MOD_ID)) {
+            EnderIOIntegration.init(modEventBus);
         }
     }
 }

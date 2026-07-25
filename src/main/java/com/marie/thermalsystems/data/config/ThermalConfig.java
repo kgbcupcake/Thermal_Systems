@@ -25,11 +25,11 @@ public final class ThermalConfig {
     public static final ModConfigSpec.DoubleValue PNEUMATICCRAFT_REFERENCE_TEMPERATURE_KELVIN;
     public static final ModConfigSpec.DoubleValue PNEUMATICCRAFT_EXCHANGER_CONVERSION_COEFFICIENT;
 
-    public static final ModConfigSpec.DoubleValue ENDERIO_ENERGY_TO_HEAT_COEFFICIENT;
-    public static final ModConfigSpec.IntValue ENDERIO_MAX_ENERGY_RECEIVED_PER_TICK;
-
     public static final ModConfigSpec.DoubleValue MEKANISM_REFERENCE_TEMPERATURE_KELVIN;
     public static final ModConfigSpec.DoubleValue MEKANISM_CONVERSION_COEFFICIENT;
+
+    public static final ModConfigSpec.DoubleValue ENDERIO_FLUID_TO_HEAT_COEFFICIENT;
+    public static final ModConfigSpec.DoubleValue ENDERIO_ENERGY_TO_HEAT_COEFFICIENT;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -98,18 +98,6 @@ public final class ThermalConfig {
 
         builder.pop();
 
-        builder.push("enderio");
-
-        ENDERIO_ENERGY_TO_HEAT_COEFFICIENT = builder
-                .comment("Scales FE received per tick through an Ender IO Energy Conduit into Thermal Systems heat output.")
-                .defineInRange("energyToHeatCoefficient", 0.001, 0.0, Double.MAX_VALUE);
-
-        ENDERIO_MAX_ENERGY_RECEIVED_PER_TICK = builder
-                .comment("Maximum FE the Ender IO Thermal Adapter will accept per tick.")
-                .defineInRange("maxEnergyReceivedPerTick", 10000, 1, Integer.MAX_VALUE);
-
-        builder.pop();
-
         builder.push("mekanism");
 
         MEKANISM_REFERENCE_TEMPERATURE_KELVIN = builder
@@ -119,6 +107,18 @@ public final class ThermalConfig {
         MEKANISM_CONVERSION_COEFFICIENT = builder
                 .comment("Scales the Kelvin difference from referenceTemperatureKelvin into Thermal Systems heat/cooling output.")
                 .defineInRange("conversionCoefficient", 0.05, 0.0, Double.MAX_VALUE);
+
+        builder.pop();
+
+        builder.push("enderio");
+
+        ENDERIO_FLUID_TO_HEAT_COEFFICIENT = builder
+                .comment("Scales millibuckets of thermalsystems:steam moved through an Ender IO Fluid Conduit into Thermal Systems heat output.")
+                .defineInRange("fluidToHeatCoefficient", 0.01, 0.0, Double.MAX_VALUE);
+
+        ENDERIO_ENERGY_TO_HEAT_COEFFICIENT = builder
+                .comment("Scales FE received per tick through an Ender IO Energy Conduit into Thermal Systems heat output.")
+                .defineInRange("energyToHeatCoefficient", 0.001, 0.0, Double.MAX_VALUE);
 
         builder.pop();
 

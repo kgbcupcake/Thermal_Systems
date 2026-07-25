@@ -1,26 +1,23 @@
 package com.marie.thermalsystems.integration.pneumaticcraft;
 
-import com.marie.thermalsystems.ThermalSystemsMod;
 import com.marie.thermalsystems.api.ThermalSystemsAPI;
 import com.marie.thermalsystems.api.cooling.CoolingSourceCapabilities;
 import com.marie.thermalsystems.api.heating.HeatSourceCapabilities;
 import com.marie.thermalsystems.api.zone.ZoneSnapshot;
-import com.marie.thermalsystems.integration.pneumaticcraft.block.ThermalExchangerBlock;
-import com.marie.thermalsystems.integration.pneumaticcraft.blockentity.ThermalExchangerBlockEntity;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import me.desht.pneumaticcraft.api.PNCCapabilities;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -28,87 +25,114 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
-import net.neoforged.neoforge.registries.DeferredBlock;
-import net.neoforged.neoforge.registries.DeferredHolder;
-import net.neoforged.neoforge.registries.DeferredItem;
-import net.neoforged.neoforge.registries.DeferredRegister;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
  * Optional integration with PneumaticCraft: Repressurized. Only ever loaded
  * and initialized when PNC:R is present - see the {@code ModList.isLoaded}
- * guard around {@link #init(IEventBus)} in {@link ThermalSystemsMod}. PNC:R
- * imports exist only within this package; nothing outside
- * {@code integration/pneumaticcraft/} may reference them.
+ * guard around {@link #init(IEventBus)} in
+ * {@link com.marie.thermalsystems.ThermalSystemsMod}. PNC:R imports exist
+ * only within this package; nothing outside {@code integration/pneumaticcraft/}
+ * may reference them.
+ *
+ * <p>This registers this mod's {@code HEAT_SOURCE}/{@code COOLING_SOURCE}
+ * capabilities directly onto PNC:R's own, unmodified block entities - it
+ * introduces no block, item, or block entity type of its own. Reading
+ * PNC:R's heat state goes through PNC:R's own capability
+ * ({@link PNCCapabilities#HEAT_EXCHANGER_BLOCK}), never through PNC:R's
+ * internal classes.
+ *
+ * <p>Verified against the PNC:R 8.2.20+mc1.21.1 jar (compileOnly dependency,
+ * full mod jar rather than an api-only artifact): {@code PNCCapabilities}
+ * declares {@code HEAT_EXCHANGER_BLOCK} as a
+ * {@code BlockCapability<IHeatExchangerLogic, Direction>} - a genuine
+ * NeoForge-idiomatic sided {@code BlockCapability}, exactly as already used
+ * elsewhere in this mod. PNC:R's own {@code CapabilitySetup} registers this
+ * capability generically on every block entity implementing its internal
+ * {@code IHeatExchangingTE} marker interface; grepping the jar for that
+ * interface plus the concrete block entities registered against it confirms
+ * the real, complete list of machines that expose it: {@code heat_sink}
+ * ({@code HeatSinkBlockEntity}, via its {@code CompressedIronBlockEntity}
+ * superclass), {@code refinery} ({@code RefineryControllerBlockEntity}), and
+ * {@code thermopneumatic_processing_plant} ({@code ThermoPlantBlockEntity}).
+ * As with {@link com.marie.thermalsystems.integration.mekanism.MekanismIntegration},
+ * these {@link BlockEntityType}s are looked up at
+ * {@link RegisterCapabilitiesEvent} time by their known, documented registry
+ * names via {@link BuiltInRegistries#BLOCK_ENTITY_TYPE} rather than
+ * importing PNC:R's internal block entity classes, so this stays resilient
+ * to PNC:R's internal package being renamed or restructured.
  */
 public final class PneumaticCraftIntegration {
 
     public static final String PNC_MOD_ID = "pneumaticcraft";
 
-    public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(ThermalSystemsMod.MOD_ID);
-    public static final DeferredBlock<ThermalExchangerBlock> THERMAL_EXCHANGER = BLOCKS.register("thermal_exchanger",
-            () -> new ThermalExchangerBlock(BlockBehaviour.Properties.of().strength(3.0f)));
-
-    public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(ThermalSystemsMod.MOD_ID);
-    public static final DeferredItem<BlockItem> THERMAL_EXCHANGER_ITEM =
-            ITEMS.registerSimpleBlockItem("thermal_exchanger", THERMAL_EXCHANGER);
-
-    public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES =
-            DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, ThermalSystemsMod.MOD_ID);
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ThermalExchangerBlockEntity>> THERMAL_EXCHANGER_BLOCK_ENTITY =
-            BLOCK_ENTITY_TYPES.register("thermal_exchanger",
-                    () -> BlockEntityType.Builder.of(ThermalExchangerBlockEntity::new, THERMAL_EXCHANGER.get()).build(null));
+    /**
+     * Registry names (under the {@code pneumaticcraft} namespace) of PNC:R's
+     * own {@link BlockEntityType}s confirmed to implement
+     * {@code IHeatExchangingTE} and thus expose
+     * {@link PNCCapabilities#HEAT_EXCHANGER_BLOCK}. See the class Javadoc for
+     * how this list was verified.
+     */
+    private static final List<String> HEAT_EXCHANGER_BLOCK_ENTITIES = List.of(
+            "heat_sink",
+            "refinery",
+            "thermopneumatic_processing_plant");
 
     private PneumaticCraftIntegration() {
     }
 
     public static void init(IEventBus modEventBus) {
-        BLOCKS.register(modEventBus);
-        ITEMS.register(modEventBus);
-        BLOCK_ENTITY_TYPES.register(modEventBus);
-
         modEventBus.addListener(RegisterCapabilitiesEvent.class, PneumaticCraftIntegration::onRegisterCapabilities);
         NeoForge.EVENT_BUS.addListener(RegisterCommandsEvent.class, PneumaticCraftIntegration::onRegisterCommands);
     }
 
     private static void onRegisterCapabilities(RegisterCapabilitiesEvent event) {
-        event.registerBlockEntity(HeatSourceCapabilities.HEAT_SOURCE, THERMAL_EXCHANGER_BLOCK_ENTITY.get(),
-                (exchanger, context) -> exchanger);
-        event.registerBlockEntity(CoolingSourceCapabilities.COOLING_SOURCE, THERMAL_EXCHANGER_BLOCK_ENTITY.get(),
-                (exchanger, context) -> exchanger);
-        event.registerBlockEntity(PNCCapabilities.HEAT_EXCHANGER_BLOCK, THERMAL_EXCHANGER_BLOCK_ENTITY.get(),
-                (exchanger, direction) -> exchanger.getHeatExchangerLogic());
+        for (String path : HEAT_EXCHANGER_BLOCK_ENTITIES) {
+            BlockEntityType<?> type = BuiltInRegistries.BLOCK_ENTITY_TYPE.get(
+                    ResourceLocation.fromNamespaceAndPath(PNC_MOD_ID, path));
+            registerHeatAndCooling(event, type);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void registerHeatAndCooling(RegisterCapabilitiesEvent event, BlockEntityType<?> type) {
+        BlockEntityType<BlockEntity> blockEntityType = (BlockEntityType<BlockEntity>) type;
+        event.registerBlockEntity(HeatSourceCapabilities.HEAT_SOURCE, blockEntityType,
+                (blockEntity, context) -> new PneumaticCraftBlockHeatSource(blockEntity.getLevel(), blockEntity.getBlockPos()));
+        event.registerBlockEntity(CoolingSourceCapabilities.COOLING_SOURCE, blockEntityType,
+                (blockEntity, context) -> new PneumaticCraftBlockHeatSource(blockEntity.getLevel(), blockEntity.getBlockPos()));
     }
 
     private static void onRegisterCommands(RegisterCommandsEvent event) {
         event.getDispatcher().register(
                 Commands.literal("thermal")
-                        .then(Commands.literal("exchanger")
+                        .then(Commands.literal("pneumaticcraft")
                                 .then(Commands.literal("bind")
                                         .then(Commands.argument("zoneName", StringArgumentType.word())
-                                                .executes(context -> bindExchanger(
+                                                .executes(context -> bind(
                                                         context.getSource(),
                                                         StringArgumentType.getString(context, "zoneName")))))
                                 .then(Commands.literal("unbind")
-                                        .executes(context -> unbindExchanger(context.getSource())))));
+                                        .executes(context -> unbind(context.getSource())))));
     }
 
-    private static int bindExchanger(CommandSourceStack source, String zoneName) throws CommandSyntaxException {
-        Optional<ThermalExchangerBlockEntity> exchanger = lookedAtExchanger(source);
-        if (exchanger.isEmpty()) {
-            source.sendFailure(Component.literal("You must be looking at a Thermal Exchanger."));
+    private static int bind(CommandSourceStack source, String zoneName) throws CommandSyntaxException {
+        Optional<BlockPos> targeted = lookedAtBlock(source.getPlayerOrException());
+        Level level = source.getLevel();
+        if (targeted.isEmpty() || HeatSourceCapabilities.HEAT_SOURCE.getCapability(level, targeted.get(), null, null, null) == null) {
+            source.sendFailure(Component.literal("You are not looking at a PneumaticCraft heat-capable block."));
             return 0;
         }
+        BlockPos pos = targeted.get();
 
-        Level level = source.getLevel();
         Optional<ZoneSnapshot> zone = ThermalSystemsAPI.getZoneByName(level, zoneName);
         if (zone.isEmpty()) {
             source.sendFailure(Component.literal("No climate zone named '" + zoneName + "' exists."));
             return 0;
         }
 
-        BlockPos pos = exchanger.get().getBlockPos();
         try {
             ThermalSystemsAPI.bindHeatSource(level, pos, zone.get().id());
         } catch (IllegalArgumentException e) {
@@ -123,32 +147,24 @@ public final class PneumaticCraftIntegration {
             return 0;
         }
 
-        source.sendSuccess(() -> Component.literal("Bound Thermal Exchanger to zone '" + zoneName + "'."), true);
+        source.sendSuccess(() -> Component.literal("Bound PneumaticCraft block to zone '" + zoneName + "'."), true);
         return 1;
     }
 
-    private static int unbindExchanger(CommandSourceStack source) throws CommandSyntaxException {
-        Optional<ThermalExchangerBlockEntity> exchanger = lookedAtExchanger(source);
-        if (exchanger.isEmpty()) {
-            source.sendFailure(Component.literal("You must be looking at a Thermal Exchanger."));
+    private static int unbind(CommandSourceStack source) throws CommandSyntaxException {
+        Optional<BlockPos> targeted = lookedAtBlock(source.getPlayerOrException());
+        Level level = source.getLevel();
+        if (targeted.isEmpty() || HeatSourceCapabilities.HEAT_SOURCE.getCapability(level, targeted.get(), null, null, null) == null) {
+            source.sendFailure(Component.literal("You are not looking at a PneumaticCraft heat-capable block."));
             return 0;
         }
+        BlockPos pos = targeted.get();
 
-        Level level = source.getLevel();
-        BlockPos pos = exchanger.get().getBlockPos();
         ThermalSystemsAPI.unbindHeatSource(level, pos);
         ThermalSystemsAPI.unbindCoolingSource(level, pos);
 
-        source.sendSuccess(() -> Component.literal("Unbound Thermal Exchanger from its zone."), true);
+        source.sendSuccess(() -> Component.literal("Unbound PneumaticCraft block from its zone."), true);
         return 1;
-    }
-
-    private static Optional<ThermalExchangerBlockEntity> lookedAtExchanger(CommandSourceStack source) throws CommandSyntaxException {
-        Optional<BlockPos> targeted = lookedAtBlock(source.getPlayerOrException());
-        return targeted
-                .map(pos -> source.getLevel().getBlockEntity(pos))
-                .filter(ThermalExchangerBlockEntity.class::isInstance)
-                .map(ThermalExchangerBlockEntity.class::cast);
     }
 
     private static Optional<BlockPos> lookedAtBlock(ServerPlayer player) {

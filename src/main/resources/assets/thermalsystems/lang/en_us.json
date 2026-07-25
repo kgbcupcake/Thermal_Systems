@@ -2,5 +2,5 @@
   "block.thermalsystems.boiler": "Boiler",
   "block.thermalsystems.steam_pipe": "Steam Pipe",
   "block.thermalsystems.radiator": "Radiator",
-  "block.thermalsystems.thermal_exchanger": "Thermal Exchanger"
+  "fluid_type.thermalsystems.steam": "Steam"
 }

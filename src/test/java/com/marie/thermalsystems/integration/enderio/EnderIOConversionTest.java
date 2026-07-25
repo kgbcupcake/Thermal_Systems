@@ -4,53 +4,65 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EnderIOConversionTest {
 
     @Test
-    void producesNoHeatWhenNoEnergyReceived() {
-        double heatOutput = EnderIOConversion.convert(0L, 0.001);
-
-        assertEquals(0.0, heatOutput, 1e-9);
+    void fluidToHeatScalesAmountByCoefficient() {
+        assertEquals(10.0, EnderIOConversion.fluidToHeat(1000, 0.01), 1e-9);
     }
 
     @Test
-    void scalesEnergyReceivedByConversionCoefficient() {
-        double heatOutput = EnderIOConversion.convert(4000L, 0.001);
-
-        assertEquals(4000L * 0.001, heatOutput, 1e-9);
+    void fluidToHeatOfZeroAmountIsZero() {
+        assertEquals(0.0, EnderIOConversion.fluidToHeat(0, 0.01), 1e-9);
     }
 
     @Test
-    void producesMoreHeatWithHigherThroughput() {
-        double low = EnderIOConversion.convert(1000L, 0.001);
-        double high = EnderIOConversion.convert(8000L, 0.001);
-
-        assertTrue(high > low);
+    void fluidToHeatRejectsNegativeAmount() {
+        assertThrows(IllegalArgumentException.class, () -> EnderIOConversion.fluidToHeat(-1, 0.01));
     }
 
     @Test
-    void rejectsNegativeEnergyReceived() {
-        assertThrows(IllegalArgumentException.class,
-                () -> EnderIOConversion.convert(-1L, 0.001));
+    void fluidToHeatRejectsInvalidCoefficient() {
+        assertThrows(IllegalArgumentException.class, () -> EnderIOConversion.fluidToHeat(100, Double.NaN));
+        assertThrows(IllegalArgumentException.class, () -> EnderIOConversion.fluidToHeat(100, -0.01));
     }
 
     @Test
-    void rejectsNegativeConversionCoefficient() {
-        assertThrows(IllegalArgumentException.class,
-                () -> EnderIOConversion.convert(1000L, -0.001));
+    void heatToFluidAmountIsTheInverseOfFluidToHeat() {
+        int amount = EnderIOConversion.heatToFluidAmount(10.0, 0.01);
+        assertEquals(1000, amount);
     }
 
     @Test
-    void rejectsNaNConversionCoefficient() {
-        assertThrows(IllegalArgumentException.class,
-                () -> EnderIOConversion.convert(1000L, Double.NaN));
+    void heatToFluidAmountWithZeroCoefficientIsZero() {
+        assertEquals(0, EnderIOConversion.heatToFluidAmount(10.0, 0.0));
     }
 
     @Test
-    void rejectsInfiniteConversionCoefficient() {
-        assertThrows(IllegalArgumentException.class,
-                () -> EnderIOConversion.convert(1000L, Double.POSITIVE_INFINITY));
+    void heatToFluidAmountRejectsInvalidHeat() {
+        assertThrows(IllegalArgumentException.class, () -> EnderIOConversion.heatToFluidAmount(-1.0, 0.01));
+        assertThrows(IllegalArgumentException.class, () -> EnderIOConversion.heatToFluidAmount(Double.NaN, 0.01));
+    }
+
+    @Test
+    void energyToHeatScalesEnergyByCoefficient() {
+        assertEquals(5.0, EnderIOConversion.energyToHeat(5000L, 0.001), 1e-9);
+    }
+
+    @Test
+    void energyToHeatOfZeroEnergyIsZero() {
+        assertEquals(0.0, EnderIOConversion.energyToHeat(0L, 0.001), 1e-9);
+    }
+
+    @Test
+    void energyToHeatRejectsNegativeEnergy() {
+        assertThrows(IllegalArgumentException.class, () -> EnderIOConversion.energyToHeat(-1L, 0.001));
+    }
+
+    @Test
+    void energyToHeatRejectsInvalidCoefficient() {
+        assertThrows(IllegalArgumentException.class, () -> EnderIOConversion.energyToHeat(1000L, Double.POSITIVE_INFINITY));
+        assertThrows(IllegalArgumentException.class, () -> EnderIOConversion.energyToHeat(1000L, -0.001));
     }
 }

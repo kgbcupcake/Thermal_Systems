@@ -36,3 +36,10 @@ description = '''${mod_description}'''
     versionRange = "${mekanism_version_range}"
     ordering = "NONE"
     side = "BOTH"
+
+[[dependencies.${mod_id}]]
+    modId = "enderio"
+    type = "optional"
+    versionRange = "${enderio_version_range}"
+    ordering = "NONE"
+    side = "BOTH"
