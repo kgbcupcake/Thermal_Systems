@@ -1,6 +1,2 @@
 {
-  "block.thermalsystems.boiler": "Boiler",
-  "block.thermalsystems.steam_pipe": "Steam Pipe",
-  "block.thermalsystems.radiator": "Radiator",
-  "fluid_type.thermalsystems.steam": "Steam"
 }

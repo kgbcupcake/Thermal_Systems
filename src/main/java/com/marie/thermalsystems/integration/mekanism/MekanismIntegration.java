@@ -3,7 +3,6 @@ package com.marie.thermalsystems.integration.mekanism;
 import com.marie.thermalsystems.api.ThermalSystemsAPI;
 import com.marie.thermalsystems.api.cooling.CoolingSourceCapabilities;
 import com.marie.thermalsystems.api.heating.HeatSourceCapabilities;
-import com.marie.thermalsystems.api.heating.IHeatSource;
 import com.marie.thermalsystems.api.zone.ZoneSnapshot;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -28,10 +27,13 @@ import net.neoforged.neoforge.capabilities.BlockCapability;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Optional integration with Mekanism. Only ever loaded and initialized when
@@ -40,47 +42,39 @@ import java.util.Optional;
  * Mekanism imports exist only within this package; nothing outside
  * {@code integration/mekanism/} may reference them.
  *
- * <p>This registers this mod's {@code HEAT_SOURCE}/{@code COOLING_SOURCE}
- * capabilities directly onto Mekanism's own, unmodified block entities -
- * it introduces no block, item, or block entity type of its own. Reading
- * Mekanism's heat state goes through Mekanism's own capability
- * ({@link #HEAT_HANDLER}), never through Mekanism's internal classes, so this
- * only depends on the public {@code mekanism.api} package this mod already
- * compiles against.
+ * <p>Zones no longer bind directly to Mekanism source machines. A Zone binds
+ * to a point on a Mekanism thermodynamic conductor (cable) network instead,
+ * via {@link MekanismNetworkPosition}, which sums {@code getHeatOutput()}/
+ * {@code getCoolingOutput()} across every machine reachable on that network
+ * that already exposes this mod's own {@code HEAT_SOURCE}/{@code COOLING_SOURCE}
+ * capability - the same registration in {@link #HEAT_CAPABLE_BLOCK_ENTITIES}
+ * below, unchanged, still used directly for Jade tooltips on the machines
+ * themselves.
  *
- * <p>Verified against the Mekanism 1.21.x source (mekanism/Mekanism):
- * Mekanism's heat capability is {@code mekanism.api.heat.IHeatHandler}
- * (sided variant {@code IMekanismHeatHandler}), part of the public
- * {@code :api} jar. Temperature is an absolute Kelvin value per capacitor
- * ({@code mekanism.api.heat.HeatAPI.AMBIENT_TEMP == 300}). The capability
- * token itself ({@code mekanism:heat_handler}) is declared in
- * {@code mekanism.common.capabilities.Capabilities}, a class outside the
- * {@code :api} jar this mod compiles against - so {@link #HEAT_HANDLER}
- * below reconstructs the identical token from its public
- * {@link ResourceLocation} and value type, which is how NeoForge capability
- * identity works (registry keyed by location + type, not by which class
- * happened to declare the constant).
+ * <p>Mekanism's real network object
+ * ({@code mekanism.common.content.network.HeatNetwork}, built on
+ * {@code mekanism.common.lib.transmitter.DynamicNetwork}) lives entirely in
+ * its internal {@code common} package - confirmed absent from the public
+ * {@code :api} jar this mod compiles against (every package in that jar was
+ * enumerated; none relate to networks or transmitters). Rather than depend
+ * on those internal, unversioned classes, {@link MekanismNetworkDiscovery}
+ * reconstructs network membership itself via a 6-directional flood-fill
+ * across Mekanism's own thermodynamic conductor block entities - identified
+ * purely by the same "known registry name via {@link BuiltInRegistries}"
+ * principle already used for {@link #HEAT_CAPABLE_BLOCK_ENTITIES} below, and
+ * mirroring exactly how the now-removed {@code SteamNetworkDiscovery} walked
+ * this mod's own pipes. This never depends on Mekanism's internal network
+ * classes and stays resilient to their internal refactoring.
  *
- * <p>{@code mekanism.common.registration.impl.TileEntityTypeDeferredRegister}
- * wires {@code Capabilities.HEAT} onto every {@code TileEntityMekanism}
- * generically, but only block entities that actually populate heat
- * capacitors return a non-null handler. Grepping Mekanism's own tile
- * sources for {@code getInitialHeatCapacitors}/{@code HeatCapacitorHelper}
- * usage in the core module (the {@code generators} submodule is a separate
- * mod not covered by this mod's compile-time {@code :api} dependency and is
- * out of scope) confirms the real, complete list of machines below:
- * {@code boiler_casing}, {@code fuelwood_heater}, {@code resistive_heater},
- * {@code thermal_evaporation_controller}, {@code thermal_evaporation_valve}.
- * The {@code mekanism.common} classes that declare and register these
- * {@link BlockEntityType}s live outside the {@code :api} jar, so this looks
- * them up at {@link RegisterCapabilitiesEvent} time by their known,
- * documented registry names via {@link BuiltInRegistries#BLOCK_ENTITY_TYPE}
- * rather than importing Mekanism's internal registry classes - the same
- * "identify by {@link ResourceLocation}, not by internal class" principle
- * used for {@link #HEAT_HANDLER} above. This adapter never references Ender
- * IO; because Ender IO's own heat conduit relays this same Mekanism
- * capability, it connects to these machines automatically once both mods
- * are present.
+ * <p>Verified against the Mekanism 1.21.x source (mekanism/Mekanism), full
+ * jar (not just {@code :api}): the four thermodynamic conductor tiers -
+ * {@code basic_thermodynamic_conductor}, {@code advanced_thermodynamic_conductor},
+ * {@code elite_thermodynamic_conductor}, {@code ultimate_thermodynamic_conductor} -
+ * are Mekanism's only heat-carrying cables (backed by
+ * {@code mekanism.common.tile.transmitter.TileEntityThermodynamicConductor}),
+ * confirmed via their blockstate/registry files. See {@link #HEAT_HANDLER}'s
+ * javadoc for how the existing {@code IHeatHandler} capability token below
+ * was independently verified.
  */
 public final class MekanismIntegration {
 
@@ -101,29 +95,72 @@ public final class MekanismIntegration {
             "thermal_evaporation_controller",
             "thermal_evaporation_valve");
 
+    /**
+     * Registry names (under the {@code mekanism} namespace) of Mekanism's own
+     * heat-carrying transmitter (cable) {@link BlockEntityType}s. A Zone
+     * binds to one of these, not to {@link #HEAT_CAPABLE_BLOCK_ENTITIES}
+     * directly. See the class Javadoc for how this list was verified.
+     */
+    private static final List<String> TRANSMITTER_BLOCK_ENTITIES = List.of(
+            "basic_thermodynamic_conductor",
+            "advanced_thermodynamic_conductor",
+            "elite_thermodynamic_conductor",
+            "ultimate_thermodynamic_conductor");
+
+    /**
+     * Resolved {@link #TRANSMITTER_BLOCK_ENTITIES} types, populated once at
+     * {@link RegisterCapabilitiesEvent} time and read by
+     * {@link MekanismNetworkPosition} for flood-fill and by the bind/unbind
+     * commands for source-vs-network validation.
+     */
+    static final Set<BlockEntityType<?>> TRANSMITTER_BLOCK_ENTITY_TYPES = new HashSet<>();
+
+    private static final Set<BlockEntityType<?>> HEAT_CAPABLE_BLOCK_ENTITY_TYPES = new HashSet<>();
+
     private MekanismIntegration() {
     }
 
     public static void init(IEventBus modEventBus) {
         modEventBus.addListener(RegisterCapabilitiesEvent.class, MekanismIntegration::onRegisterCapabilities);
         NeoForge.EVENT_BUS.addListener(RegisterCommandsEvent.class, MekanismIntegration::onRegisterCommands);
+        NeoForge.EVENT_BUS.addListener(ServerStoppingEvent.class, MekanismIntegration::onServerStopping);
+    }
+
+    private static void onServerStopping(ServerStoppingEvent event) {
+        MekanismNetworkPosition.clearCache();
     }
 
     private static void onRegisterCapabilities(RegisterCapabilitiesEvent event) {
         for (String path : HEAT_CAPABLE_BLOCK_ENTITIES) {
             BlockEntityType<?> type = BuiltInRegistries.BLOCK_ENTITY_TYPE.get(
                     ResourceLocation.fromNamespaceAndPath(MEKANISM_MOD_ID, path));
-            registerHeatAndCooling(event, type);
+            HEAT_CAPABLE_BLOCK_ENTITY_TYPES.add(type);
+            registerSourceHeatAndCooling(event, type);
+        }
+        for (String path : TRANSMITTER_BLOCK_ENTITIES) {
+            BlockEntityType<?> type = BuiltInRegistries.BLOCK_ENTITY_TYPE.get(
+                    ResourceLocation.fromNamespaceAndPath(MEKANISM_MOD_ID, path));
+            TRANSMITTER_BLOCK_ENTITY_TYPES.add(type);
+            registerNetworkHeatAndCooling(event, type);
         }
     }
 
     @SuppressWarnings("unchecked")
-    private static void registerHeatAndCooling(RegisterCapabilitiesEvent event, BlockEntityType<?> type) {
+    private static void registerSourceHeatAndCooling(RegisterCapabilitiesEvent event, BlockEntityType<?> type) {
         BlockEntityType<BlockEntity> blockEntityType = (BlockEntityType<BlockEntity>) type;
         event.registerBlockEntity(HeatSourceCapabilities.HEAT_SOURCE, blockEntityType,
                 (blockEntity, context) -> new MekanismBlockHeatSource(blockEntity.getLevel(), blockEntity.getBlockPos()));
         event.registerBlockEntity(CoolingSourceCapabilities.COOLING_SOURCE, blockEntityType,
                 (blockEntity, context) -> new MekanismBlockHeatSource(blockEntity.getLevel(), blockEntity.getBlockPos()));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void registerNetworkHeatAndCooling(RegisterCapabilitiesEvent event, BlockEntityType<?> type) {
+        BlockEntityType<BlockEntity> blockEntityType = (BlockEntityType<BlockEntity>) type;
+        event.registerBlockEntity(HeatSourceCapabilities.HEAT_SOURCE, blockEntityType,
+                (blockEntity, context) -> new MekanismNetworkPosition(blockEntity.getLevel(), blockEntity.getBlockPos()));
+        event.registerBlockEntity(CoolingSourceCapabilities.COOLING_SOURCE, blockEntityType,
+                (blockEntity, context) -> new MekanismNetworkPosition(blockEntity.getLevel(), blockEntity.getBlockPos()));
     }
 
     private static void onRegisterCommands(RegisterCommandsEvent event) {
@@ -142,11 +179,20 @@ public final class MekanismIntegration {
     private static int bind(CommandSourceStack source, String zoneName) throws CommandSyntaxException {
         Optional<BlockPos> targeted = lookedAtBlock(source.getPlayerOrException());
         Level level = source.getLevel();
-        if (targeted.isEmpty() || HeatSourceCapabilities.HEAT_SOURCE.getCapability(level, targeted.get(), null, null, null) == null) {
-            source.sendFailure(Component.literal("You are not looking at a Mekanism heat-capable block."));
+        if (targeted.isEmpty()) {
+            source.sendFailure(Component.literal("You are not looking at a block."));
             return 0;
         }
         BlockPos pos = targeted.get();
+
+        if (isSourceBlock(level, pos) && !isNetworkBlock(level, pos)) {
+            source.sendFailure(Component.literal("Bind a cable connected to this generator, not the generator itself."));
+            return 0;
+        }
+        if (!isNetworkBlock(level, pos)) {
+            source.sendFailure(Component.literal("You are not looking at a Mekanism thermodynamic conductor."));
+            return 0;
+        }
 
         Optional<ZoneSnapshot> zone = ThermalSystemsAPI.getZoneByName(level, zoneName);
         if (zone.isEmpty()) {
@@ -168,15 +214,15 @@ public final class MekanismIntegration {
             return 0;
         }
 
-        source.sendSuccess(() -> Component.literal("Bound Mekanism block to zone '" + zoneName + "'."), true);
+        source.sendSuccess(() -> Component.literal("Bound Mekanism cable to zone '" + zoneName + "'."), true);
         return 1;
     }
 
     private static int unbind(CommandSourceStack source) throws CommandSyntaxException {
         Optional<BlockPos> targeted = lookedAtBlock(source.getPlayerOrException());
         Level level = source.getLevel();
-        if (targeted.isEmpty() || HeatSourceCapabilities.HEAT_SOURCE.getCapability(level, targeted.get(), null, null, null) == null) {
-            source.sendFailure(Component.literal("You are not looking at a Mekanism heat-capable block."));
+        if (targeted.isEmpty() || !isNetworkBlock(level, targeted.get())) {
+            source.sendFailure(Component.literal("You are not looking at a Mekanism thermodynamic conductor."));
             return 0;
         }
         BlockPos pos = targeted.get();
@@ -184,8 +230,18 @@ public final class MekanismIntegration {
         ThermalSystemsAPI.unbindHeatSource(level, pos);
         ThermalSystemsAPI.unbindCoolingSource(level, pos);
 
-        source.sendSuccess(() -> Component.literal("Unbound Mekanism block from its zone."), true);
+        source.sendSuccess(() -> Component.literal("Unbound Mekanism cable from its zone."), true);
         return 1;
+    }
+
+    private static boolean isNetworkBlock(Level level, BlockPos pos) {
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        return blockEntity != null && TRANSMITTER_BLOCK_ENTITY_TYPES.contains(blockEntity.getType());
+    }
+
+    private static boolean isSourceBlock(Level level, BlockPos pos) {
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        return blockEntity != null && HEAT_CAPABLE_BLOCK_ENTITY_TYPES.contains(blockEntity.getType());
     }
 
     private static Optional<BlockPos> lookedAtBlock(ServerPlayer player) {

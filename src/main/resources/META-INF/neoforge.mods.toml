@@ -8,6 +8,7 @@ version = "${mod_version}"
 displayName = "${mod_name}"
 authors = "${mod_authors}"
 description = '''${mod_description}'''
+logoFile ="Thermal_icon.png"
 
 [[dependencies.${mod_id}]]
     modId = "neoforge"
@@ -21,6 +22,13 @@ description = '''${mod_description}'''
     type = "required"
     versionRange = "${minecraft_version_range}"
     ordering = "NONE"
+    side = "BOTH"
+
+[[dependencies.${mod_id}]]
+    modId = "marieslib"
+    type = "required"
+    versionRange = "${maries_framework_version_range}"
+    ordering = "AFTER"
     side = "BOTH"
 
 [[dependencies.${mod_id}]]

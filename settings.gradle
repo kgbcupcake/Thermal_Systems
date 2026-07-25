@@ -10,3 +10,14 @@ plugins {
 }
 
 rootProject.name = 'thermalsystems'
+
+def localMariesFrameworkDir = file('../Marieslib')
+gradle.ext.localMariesFrameworkPresent = new File(localMariesFrameworkDir, 'build.gradle').exists()
+
+if (gradle.ext.localMariesFrameworkPresent) {
+    includeBuild('../Marieslib') {
+        dependencySubstitution {
+            substitute module('dev.marie.MariesLib:marieslib') using project(':')
+        }
+    }
+}

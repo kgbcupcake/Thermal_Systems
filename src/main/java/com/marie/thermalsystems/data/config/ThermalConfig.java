@@ -16,9 +16,6 @@ public final class ThermalConfig {
     public static final ModConfigSpec.DoubleValue MAXIMUM_TEMPERATURE;
     public static final ModConfigSpec.BooleanValue LOGGING_ENABLED;
 
-    public static final ModConfigSpec.IntValue STEAM_NETWORK_RECOMPUTE_INTERVAL;
-    public static final ModConfigSpec.DoubleValue DEFAULT_BOILER_HEAT_OUTPUT;
-
     public static final ModConfigSpec.IntValue PLAYER_BRIDGE_INTERVAL;
     public static final ModConfigSpec.DoubleValue DEFAULT_AMBIENT_TEMPERATURE;
 
@@ -27,9 +24,10 @@ public final class ThermalConfig {
 
     public static final ModConfigSpec.DoubleValue MEKANISM_REFERENCE_TEMPERATURE_KELVIN;
     public static final ModConfigSpec.DoubleValue MEKANISM_CONVERSION_COEFFICIENT;
+    public static final ModConfigSpec.IntValue MEKANISM_NETWORK_RECOMPUTE_INTERVAL;
 
-    public static final ModConfigSpec.DoubleValue ENDERIO_FLUID_TO_HEAT_COEFFICIENT;
     public static final ModConfigSpec.DoubleValue ENDERIO_ENERGY_TO_HEAT_COEFFICIENT;
+    public static final ModConfigSpec.IntValue ENDERIO_NETWORK_RECOMPUTE_INTERVAL;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -59,18 +57,6 @@ public final class ThermalConfig {
         LOGGING_ENABLED = builder
                 .comment("Gates per-interval log output.")
                 .define("loggingEnabled", true);
-
-        builder.pop();
-
-        builder.push("steam");
-
-        STEAM_NETWORK_RECOMPUTE_INTERVAL = builder
-                .comment("Ticks between dirty steam network recomputation.")
-                .defineInRange("steamNetworkRecomputeInterval", 20, 1, Integer.MAX_VALUE);
-
-        DEFAULT_BOILER_HEAT_OUTPUT = builder
-                .comment("Heat output assigned to a newly placed Boiler before setOutput is used.")
-                .defineInRange("defaultBoilerHeatOutput", 0.0, 0.0, Double.MAX_VALUE);
 
         builder.pop();
 
@@ -108,17 +94,21 @@ public final class ThermalConfig {
                 .comment("Scales the Kelvin difference from referenceTemperatureKelvin into Thermal Systems heat/cooling output.")
                 .defineInRange("conversionCoefficient", 0.05, 0.0, Double.MAX_VALUE);
 
+        MEKANISM_NETWORK_RECOMPUTE_INTERVAL = builder
+                .comment("Ticks a Mekanism cable network's heat/cooling sum is cached for before being recomputed on next read.")
+                .defineInRange("networkRecomputeInterval", 20, 1, Integer.MAX_VALUE);
+
         builder.pop();
 
         builder.push("enderio");
 
-        ENDERIO_FLUID_TO_HEAT_COEFFICIENT = builder
-                .comment("Scales millibuckets of thermalsystems:steam moved through an Ender IO Fluid Conduit into Thermal Systems heat output.")
-                .defineInRange("fluidToHeatCoefficient", 0.01, 0.0, Double.MAX_VALUE);
-
         ENDERIO_ENERGY_TO_HEAT_COEFFICIENT = builder
-                .comment("Scales FE received per tick through an Ender IO Energy Conduit into Thermal Systems heat output.")
+                .comment("Scales the FE an Ender IO Stirling Generator currently holds in storage into Thermal Systems heat output.")
                 .defineInRange("energyToHeatCoefficient", 0.001, 0.0, Double.MAX_VALUE);
+
+        ENDERIO_NETWORK_RECOMPUTE_INTERVAL = builder
+                .comment("Ticks an Ender IO conduit network's heat sum is cached for before being recomputed on next read.")
+                .defineInRange("networkRecomputeInterval", 20, 1, Integer.MAX_VALUE);
 
         builder.pop();
 

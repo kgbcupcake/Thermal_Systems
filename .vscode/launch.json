@@ -12,11 +12,11 @@
       "projectName": "thermalsystems",
       "mainClass": "net.neoforged.devlaunch.Main",
       "args": [
-        "@/home/only/RiderProjects/Marie\u0027s Thermal Systems/build/moddev/clientRunProgramArgs.txt"
+        "@/home/only/RiderProjects/Thermal_Systems/build/moddev/clientRunProgramArgs.txt"
       ],
       "vmArgs": [
-        "@/home/only/RiderProjects/Marie\u0027s Thermal Systems/build/moddev/clientRunVmArgs.txt",
-        "-Dfml.modFolders\u003dthermalsystems%%/home/only/RiderProjects/Marie\u0027s Thermal Systems/bin/main"
+        "@/home/only/RiderProjects/Thermal_Systems/build/moddev/clientRunVmArgs.txt",
+        "-Dfml.modFolders\u003dthermalsystems%%/home/only/RiderProjects/Thermal_Systems/bin/main"
       ],
       "cwd": "${workspaceFolder}/run",
       "env": {},
@@ -34,11 +34,11 @@
       "projectName": "thermalsystems",
       "mainClass": "net.neoforged.devlaunch.Main",
       "args": [
-        "@/home/only/RiderProjects/Marie\u0027s Thermal Systems/build/moddev/dataRunProgramArgs.txt"
+        "@/home/only/RiderProjects/Thermal_Systems/build/moddev/dataRunProgramArgs.txt"
       ],
       "vmArgs": [
-        "@/home/only/RiderProjects/Marie\u0027s Thermal Systems/build/moddev/dataRunVmArgs.txt",
-        "-Dfml.modFolders\u003dthermalsystems%%/home/only/RiderProjects/Marie\u0027s Thermal Systems/bin/main"
+        "@/home/only/RiderProjects/Thermal_Systems/build/moddev/dataRunVmArgs.txt",
+        "-Dfml.modFolders\u003dthermalsystems%%/home/only/RiderProjects/Thermal_Systems/bin/main"
       ],
       "cwd": "${workspaceFolder}/run",
       "env": {},
@@ -56,11 +56,11 @@
       "projectName": "thermalsystems",
       "mainClass": "net.neoforged.devlaunch.Main",
       "args": [
-        "@/home/only/RiderProjects/Marie\u0027s Thermal Systems/build/moddev/serverRunProgramArgs.txt"
+        "@/home/only/RiderProjects/Thermal_Systems/build/moddev/serverRunProgramArgs.txt"
       ],
       "vmArgs": [
-        "@/home/only/RiderProjects/Marie\u0027s Thermal Systems/build/moddev/serverRunVmArgs.txt",
-        "-Dfml.modFolders\u003dthermalsystems%%/home/only/RiderProjects/Marie\u0027s Thermal Systems/bin/main"
+        "@/home/only/RiderProjects/Thermal_Systems/build/moddev/serverRunVmArgs.txt",
+        "-Dfml.modFolders\u003dthermalsystems%%/home/only/RiderProjects/Thermal_Systems/bin/main"
       ],
       "cwd": "${workspaceFolder}/run",
       "env": {},
