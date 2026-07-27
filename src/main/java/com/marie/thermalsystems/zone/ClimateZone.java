@@ -123,6 +123,22 @@ public class ClimateZone implements IClimateZone {
         return boundsMin != null;
     }
 
+    /**
+     * Returns this zone's minimum bound corner. Only valid when
+     * {@link #hasBounds()} is true.
+     */
+    public BlockPos getBoundsMin() {
+        return boundsMin;
+    }
+
+    /**
+     * Returns this zone's maximum bound corner. Only valid when
+     * {@link #hasBounds()} is true.
+     */
+    public BlockPos getBoundsMax() {
+        return boundsMax;
+    }
+
     public boolean containsPosition(BlockPos pos) {
         if (boundsMin == null) {
             return false;

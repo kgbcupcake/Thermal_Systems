@@ -19,6 +19,12 @@ public final class ThermalConfig {
     public static final ModConfigSpec.IntValue PLAYER_BRIDGE_INTERVAL;
     public static final ModConfigSpec.DoubleValue DEFAULT_AMBIENT_TEMPERATURE;
 
+    public static final ModConfigSpec.IntValue SOURCE_BINDING_RADIUS;
+    public static final ModConfigSpec.IntValue SOURCE_BINDING_SCAN_INTERVAL;
+
+    public static final ModConfigSpec.IntValue SOURCE_RADIATION_RADIUS;
+    public static final ModConfigSpec.IntValue SOURCE_RADIATION_INTERVAL;
+
     public static final ModConfigSpec.DoubleValue PNEUMATICCRAFT_REFERENCE_TEMPERATURE_KELVIN;
     public static final ModConfigSpec.DoubleValue PNEUMATICCRAFT_EXCHANGER_CONVERSION_COEFFICIENT;
 
@@ -69,6 +75,22 @@ public final class ThermalConfig {
         DEFAULT_AMBIENT_TEMPERATURE = builder
                 .comment("Temperature reported to bridges for a player not inside any bounded zone.")
                 .defineInRange("defaultAmbientTemperature", 20.0, -Double.MAX_VALUE, Double.MAX_VALUE);
+
+        SOURCE_BINDING_RADIUS = builder
+                .comment("Blocks beyond a bounded zone's edges to scan for foreign heat/cooling source capabilities to auto-bind.")
+                .defineInRange("sourceBindingRadius", 5, 1, 64);
+
+        SOURCE_BINDING_SCAN_INTERVAL = builder
+                .comment("Ticks between automatic zone source-binding scans.")
+                .defineInRange("sourceScanInterval", 100, 1, Integer.MAX_VALUE);
+
+        SOURCE_RADIATION_RADIUS = builder
+                .comment("Chebyshev-distance blocks a tracked heat/cooling source radiates directly to nearby players, independent of any zone.")
+                .defineInRange("sourceRadiationRadius", 5, 1, 64);
+
+        SOURCE_RADIATION_INTERVAL = builder
+                .comment("Ticks between direct source-to-player radiation applications.")
+                .defineInRange("sourceRadiationInterval", 20, 1, Integer.MAX_VALUE);
 
         builder.pop();
 

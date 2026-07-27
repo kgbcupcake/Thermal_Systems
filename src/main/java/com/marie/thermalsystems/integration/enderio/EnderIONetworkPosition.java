@@ -1,5 +1,7 @@
 package com.marie.thermalsystems.integration.enderio;
 
+import com.marie.thermalsystems.api.cooling.CoolingSourceCapabilities;
+import com.marie.thermalsystems.api.cooling.ICoolingSource;
 import com.marie.thermalsystems.api.heating.HeatSourceCapabilities;
 import com.marie.thermalsystems.api.heating.IHeatSource;
 import com.marie.thermalsystems.data.config.ThermalConfig;
@@ -16,9 +18,9 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Represents a point on an Ender IO conduit bundle network. Unlike
  * {@link EnderIOBlockHeatSource}, which adapts a single Ender IO machine's
- * own energy state, this sums {@code getHeatOutput()} across every Thermal-
- * Systems-capable block reachable on the network this position belongs to,
- * discovered via {@link EnderIONetworkDiscovery}.
+ * own energy state, this sums {@code getHeatOutput()}/{@code getCoolingOutput()}
+ * across every Thermal-Systems-capable block reachable on the network this
+ * position belongs to, discovered via {@link EnderIONetworkDiscovery}.
  *
  * <p>The NeoForge capability system calls the registered provider fresh on
  * every {@code getCapability()} query, so no per-instance state survives
@@ -37,7 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * this cache's lifetime is tied to the NeoForge server lifecycle rather than
  * only to the classloader, per the project's no-unmanaged-global-state rule.
  */
-final class EnderIONetworkPosition implements IHeatSource {
+final class EnderIONetworkPosition implements IHeatSource, ICoolingSource {
 
     private static final Map<ResourceKey<Level>, Map<BlockPos, CacheEntry>> CACHE = new ConcurrentHashMap<>();
 
@@ -56,6 +58,11 @@ final class EnderIONetworkPosition implements IHeatSource {
     @Override
     public double getHeatOutput() {
         return resolve().heatSum();
+    }
+
+    @Override
+    public double getCoolingOutput() {
+        return resolve().coolingSum();
     }
 
     private CacheEntry resolve() {
@@ -77,16 +84,21 @@ final class EnderIONetworkPosition implements IHeatSource {
         Set<BlockPos> boundary = EnderIONetworkDiscovery.discoverBoundary(pos, level, EnderIOIntegration.CONDUIT_BLOCK_ENTITY_TYPE);
 
         List<Double> heatOutputs = new ArrayList<>();
+        List<Double> coolingOutputs = new ArrayList<>();
         for (BlockPos boundaryPos : boundary) {
             IHeatSource heatSource = HeatSourceCapabilities.HEAT_SOURCE.getCapability(level, boundaryPos, null, null, null);
             if (heatSource != null) {
                 heatOutputs.add(heatSource.getHeatOutput());
             }
+            ICoolingSource coolingSource = CoolingSourceCapabilities.COOLING_SOURCE.getCapability(level, boundaryPos, null, null, null);
+            if (coolingSource != null) {
+                coolingOutputs.add(coolingSource.getCoolingOutput());
+            }
         }
 
-        return new CacheEntry(level.getGameTime(), EnderIONetworkSum.sum(heatOutputs));
+        return new CacheEntry(level.getGameTime(), EnderIONetworkSum.sum(heatOutputs), EnderIONetworkSum.sum(coolingOutputs));
     }
 
-    private record CacheEntry(long computedAtTick, double heatSum) {
+    private record CacheEntry(long computedAtTick, double heatSum, double coolingSum) {
     }
 }

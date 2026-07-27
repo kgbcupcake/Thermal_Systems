@@ -22,6 +22,12 @@ repositories {
         url = "https://modmaven.dev"
     }
     maven {
+        // Hosts Legendary Survival Overhaul, which isn't mirrored on ModMaven.
+        // See integration/lso/LSOIntegration.java.
+        name = "Modrinth"
+        url = "https://api.modrinth.com/maven"
+    }
+    maven {
         name = 'GitHubPackages'
         url = 'https://maven.pkg.github.com/kgbcupcake/MariesLib'
         credentials {
@@ -85,13 +91,18 @@ dependencies {
     // See integration/mekanism/MekanismIntegration.java.
     compileOnly "mekanism:Mekanism:${mekanism_version}:api"
 
-    // Test-scoped only, mirroring the two dependencies above: capability-registration
+    // Compile-time only: LSO integration must remain optional at runtime.
+    // See integration/lso/LSOIntegration.java.
+    compileOnly "maven.modrinth:legendary-survival-overhaul:${lso_version}"
+
+    // Test-scoped only, mirroring the dependencies above: capability-registration
     // tests use stub implementations of the target mods' public API interfaces, which
     // requires these interfaces on the test runtime classpath too (unlike the compileOnly
     // dependencies above, this does not affect the shipped mod jar's optional-at-runtime
     // guarantee - it only affects how this test source set itself is run).
     testImplementation "me.desht.pneumaticcraft:pneumaticcraft-repressurized:${pneumaticcraft_version}"
     testImplementation "mekanism:Mekanism:${mekanism_version}:api"
+    testImplementation "maven.modrinth:legendary-survival-overhaul:${lso_version}"
 
     testImplementation platform('org.junit:junit-bom:5.10.2')
     testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -116,6 +127,7 @@ tasks.named('processResources', ProcessResources).configure {
         pneumaticcraft_version_range: pneumaticcraft_version_range,
         mekanism_version_range : mekanism_version_range,
         enderio_version_range  : enderio_version_range,
+        lso_version_range      : lso_version_range,
         maries_framework_version_range: maries_framework_version_range,
         mod_id                 : mod_id,
         mod_name               : mod_name,

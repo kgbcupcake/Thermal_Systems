@@ -51,3 +51,10 @@ logoFile ="Thermal_icon.png"
     versionRange = "${enderio_version_range}"
     ordering = "NONE"
     side = "BOTH"
+
+[[dependencies.${mod_id}]]
+    modId = "legendarysurvivaloverhaul"
+    type = "optional"
+    versionRange = "${lso_version_range}"
+    ordering = "NONE"
+    side = "BOTH"

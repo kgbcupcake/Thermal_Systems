@@ -4,6 +4,7 @@ import com.marie.thermalsystems.data.config.ThermalConfig;
 import com.marie.thermalsystems.hover.ThermalHoverProvider;
 import com.marie.thermalsystems.integration.enderio.EnderIOIntegration;
 import com.marie.thermalsystems.integration.enderio.EnderIONetworkHoverProvider;
+import com.marie.thermalsystems.integration.lso.LSOIntegration;
 import com.marie.thermalsystems.integration.mekanism.MekanismIntegration;
 import com.marie.thermalsystems.integration.mekanism.MekanismNetworkHoverProvider;
 import com.marie.thermalsystems.integration.pneumaticcraft.PneumaticCraftIntegration;
@@ -24,10 +25,10 @@ import net.neoforged.fml.config.ModConfig;
  * ({@link com.marie.thermalsystems.climate.ClimateTickHandler},
  * {@link com.marie.thermalsystems.registry.ThermalCommands}), so this class
  * only wires config and optional integrations. PneumaticCraftIntegration,
- * MekanismIntegration, and EnderIOIntegration are only ever loaded when
- * their respective mods are present - the ModList checks below must stay
- * guards around the calls, never direct class references, so the mod still
- * loads with any of them absent.
+ * MekanismIntegration, EnderIOIntegration, and LSOIntegration are only ever
+ * loaded when their respective mods are present - the ModList checks below
+ * must stay guards around the calls, never direct class references, so the
+ * mod still loads with any of them absent.
  */
 @Mod(ThermalSystemsMod.MOD_ID)
 public class ThermalSystemsMod {
@@ -53,6 +54,10 @@ public class ThermalSystemsMod {
         if (ModList.get().isLoaded(EnderIOIntegration.ENDERIO_MOD_ID)) {
             EnderIOIntegration.init(modEventBus);
             MarieAPI.registerBlockHoverProvider(new EnderIONetworkHoverProvider());
+        }
+
+        if (ModList.get().isLoaded(LSOIntegration.LSO_MOD_ID)) {
+            LSOIntegration.init();
         }
     }
 }
