@@ -56,7 +56,7 @@ final class EnderIOBlockHeatSource implements IHeatSource, ICoolingSource {
     }
 
     static double convert(IEnergyStorage storage) {
-        double coefficient = ThermalConfig.ENDERIO_ENERGY_TO_HEAT_COEFFICIENT.get();
+        double coefficient = ThermalConfig.ENDERIO_ENERGY_TO_HEAT_COEFFICIENT.get() * ThermalConfig.ENDERIO_OUTPUT_MULTIPLIER.get();
         return EnderIOConversion.energyToHeat(storage.getEnergyStored(), coefficient);
     }
 }

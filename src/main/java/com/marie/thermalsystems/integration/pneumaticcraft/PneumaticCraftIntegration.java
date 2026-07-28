@@ -4,8 +4,10 @@ import com.marie.thermalsystems.api.ThermalSystemsAPI;
 import com.marie.thermalsystems.api.cooling.CoolingSourceCapabilities;
 import com.marie.thermalsystems.api.heating.HeatSourceCapabilities;
 import com.marie.thermalsystems.api.zone.ZoneSnapshot;
+import com.marie.thermalsystems.data.config.ThermalConfig;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import dev.marie.framework.api.marieapi.MarieAPI;
 import me.desht.pneumaticcraft.api.PNCCapabilities;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -84,8 +86,12 @@ public final class PneumaticCraftIntegration {
     }
 
     public static void init(IEventBus modEventBus) {
+        if (!ThermalConfig.PNEUMATICCRAFT_ENABLED.get()) {
+            return;
+        }
         modEventBus.addListener(RegisterCapabilitiesEvent.class, PneumaticCraftIntegration::onRegisterCapabilities);
         NeoForge.EVENT_BUS.addListener(RegisterCommandsEvent.class, PneumaticCraftIntegration::onRegisterCommands);
+        MarieAPI.registerBlockHoverProvider(new PneumaticCraftTubeHoverProvider());
     }
 
     private static void onRegisterCapabilities(RegisterCapabilitiesEvent event) {

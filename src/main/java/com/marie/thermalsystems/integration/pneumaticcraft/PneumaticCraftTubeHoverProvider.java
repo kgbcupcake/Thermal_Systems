@@ -1,5 +1,6 @@
 package com.marie.thermalsystems.integration.pneumaticcraft;
 
+import com.marie.thermalsystems.data.config.ThermalConfig;
 import dev.marie.framework.api.hover.BlockHoverProvider;
 import me.desht.pneumaticcraft.api.PNCCapabilities;
 import me.desht.pneumaticcraft.api.tileentity.IAirHandlerMachine;
@@ -64,6 +65,9 @@ public final class PneumaticCraftTubeHoverProvider implements BlockHoverProvider
 
     @Override
     public List<Component> renderLines(CompoundTag data, Level level, BlockPos pos) {
+        if (!ThermalConfig.HOVER_TOOLTIPS_ENABLED.get()) {
+            return List.of();
+        }
         if (!data.getBoolean("hasAir")) {
             return List.of(Component.literal("Not connected to a pressure network"));
         }

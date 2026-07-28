@@ -14,6 +14,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Drives the consumer side of the bridge API. Once per
@@ -25,6 +26,17 @@ import java.util.Optional;
  */
 @EventBusSubscriber(modid = ThermalSystemsMod.MOD_ID)
 public final class PlayerTemperatureBridgeHandler {
+
+    /**
+     * Fixed, unique-to-this-caller id passed as {@link ITemperatureBridge}'s
+     * {@code sourceId} - see that interface's Javadoc. Identifies every call
+     * this handler makes as the "zone-ambient temperature" contribution, kept
+     * distinct from {@code SourceRadiationTickHandler}'s own id so a bridge
+     * backed by a caller-keyed additive attribute system (like LSO) doesn't
+     * let one caller's contribution silently overwrite the other's. Never
+     * regenerate this value.
+     */
+    private static final UUID SOURCE_ID = UUID.fromString("8f2e6f2c-9b1a-4a3e-9d3a-1c6a8e5f2b7d");
 
     private static int tickCounter = 0;
 
@@ -51,7 +63,7 @@ public final class PlayerTemperatureBridgeHandler {
                 Optional<ClimateZone> zone = ZoneSpatialIndex.resolve(level, player.blockPosition());
                 double temperature = zone.map(ClimateZone::getCurrentTemp).orElse(defaultAmbient);
                 for (ITemperatureBridge bridge : bridges) {
-                    bridge.applyAmbientTemperature(player, temperature);
+                    bridge.applyAmbientTemperature(player, temperature, SOURCE_ID);
                 }
             }
         }

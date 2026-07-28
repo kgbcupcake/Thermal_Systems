@@ -1,7 +1,10 @@
 package com.marie.thermalsystems.integration.lso;
 
 import com.marie.thermalsystems.api.bridge.ITemperatureBridge;
+import com.marie.thermalsystems.data.config.ThermalConfig;
 import net.minecraft.server.level.ServerPlayer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import sfiomn.legendarysurvivaloverhaul.api.temperature.TemperatureEnum;
 import sfiomn.legendarysurvivaloverhaul.api.temperature.TemperatureUtil;
 
@@ -25,29 +28,36 @@ import java.util.UUID;
  * Thermal Systems' {@code ambientTemperatureCelsius}, by contrast, is an
  * absolute resolved zone/ambient temperature. Passing it straight through as
  * a delta would double-count on top of LSO's own world temperature, so it is
- * converted to a delta relative to that 20.0 neutral point before being
- * handed to LSO.
+ * converted to a delta relative to that neutral point (configurable via
+ * {@link ThermalConfig#LSO_TEMPERATURE_OFFSET}, defaulting to 20.0) before
+ * being handed to LSO.
+ *
+ * <p>{@code sourceId} (see {@link ITemperatureBridge}'s Javadoc) is passed
+ * straight through as LSO's modifier UUID. Thermal Systems has two
+ * independent, differently-timed callers of this method for the same player
+ * - zone-ambient temperature and direct source radiation - and LSO's
+ * {@code addTemperatureModifier} replaces any existing modifier registered
+ * under the same UUID rather than stacking a new one. Using one shared
+ * constant here regardless of caller meant whichever caller's tick ran
+ * second always silently overwrote the other's contribution (observed as
+ * direct-radiation deltas being immediately replaced by a zone call's 0.0
+ * when no zone was bound). Forwarding each caller's own {@code sourceId}
+ * instead means both land as separate modifiers on the same
+ * {@code HEATING_TEMPERATURE}/{@code COOLING_TEMPERATURE} attribute, which
+ * LSO already sums via {@code getAttributeValue} - no change needed on LSO's
+ * read side, only here on the write side.
  */
 public final class LSOThermalBridge implements ITemperatureBridge {
 
-    /**
-     * Fixed, unique-to-this-mod modifier id. LSO's {@code addTemperatureModifier}
-     * replaces any modifier already registered under the same UUID rather than
-     * stacking a new one, so reusing this constant on every call is what makes
-     * repeated calls cleanly overwrite Thermal Systems' own prior contribution
-     * instead of accumulating duplicates. Never regenerate this value.
-     */
-    private static final UUID MODIFIER_ID = UUID.fromString("0352831b-0119-47f2-8f50-5c3e9f52a6a8");
-
-    /**
-     * LSO's neutral "room temperature" point - see the class Javadoc's scale
-     * check. {@code TemperatureEnum}'s {@code NORMAL} constant is centered here.
-     */
-    private static final double LSO_NEUTRAL_CELSIUS = 20.0;
+    private static final Logger LOGGER = LoggerFactory.getLogger(LSOThermalBridge.class);
 
     @Override
-    public void applyAmbientTemperature(ServerPlayer player, double ambientTemperatureCelsius) {
-        double delta = ambientTemperatureCelsius - LSO_NEUTRAL_CELSIUS;
-        TemperatureUtil.addTemperatureModifier(player, delta, MODIFIER_ID);
+    public void applyAmbientTemperature(ServerPlayer player, double ambientTemperatureCelsius, UUID sourceId) {
+        double delta = ambientTemperatureCelsius - ThermalConfig.LSO_TEMPERATURE_OFFSET.get();
+        if (ThermalConfig.LOGGING_ENABLED.get()) {
+            LOGGER.info("[MTS] LSOThermalBridge.applyAmbientTemperature player={} ambientC={} delta={} sourceId={}",
+                    player.getGameProfile().getName(), ambientTemperatureCelsius, delta, sourceId);
+        }
+        TemperatureUtil.addTemperatureModifier(player, delta, sourceId);
     }
 }

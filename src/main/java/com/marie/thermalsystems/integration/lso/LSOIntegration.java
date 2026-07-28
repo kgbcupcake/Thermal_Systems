@@ -1,6 +1,7 @@
 package com.marie.thermalsystems.integration.lso;
 
 import com.marie.thermalsystems.api.ThermalSystemsAPI;
+import com.marie.thermalsystems.data.config.ThermalConfig;
 
 /**
  * Optional integration with Legendary Survival Overhaul. Only ever
@@ -23,6 +24,9 @@ public final class LSOIntegration {
     }
 
     public static void init() {
+        if (!ThermalConfig.LSO_ENABLED.get()) {
+            return;
+        }
         ThermalSystemsAPI.registerTemperatureBridge(new LSOThermalBridge());
     }
 }

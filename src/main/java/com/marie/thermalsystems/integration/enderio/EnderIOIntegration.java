@@ -5,6 +5,7 @@ import com.marie.thermalsystems.api.ThermalSystemsAPI;
 import com.marie.thermalsystems.api.cooling.CoolingSourceCapabilities;
 import com.marie.thermalsystems.api.heating.HeatSourceCapabilities;
 import com.marie.thermalsystems.api.zone.ZoneSnapshot;
+import com.marie.thermalsystems.data.config.ThermalConfig;
 import com.marie.thermalsystems.radiation.ActiveSourcePositions;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -132,6 +133,9 @@ public final class EnderIOIntegration {
     }
 
     public static void init(IEventBus modEventBus) {
+        if (!ThermalConfig.ENDERIO_ENABLED.get()) {
+            return;
+        }
         modEventBus.addListener(RegisterCapabilitiesEvent.class, EnderIOIntegration::onRegisterCapabilities);
         NeoForge.EVENT_BUS.addListener(RegisterCommandsEvent.class, EnderIOIntegration::onRegisterCommands);
         NeoForge.EVENT_BUS.addListener(ServerStoppingEvent.class, EnderIOIntegration::onServerStopping);
@@ -139,6 +143,7 @@ public final class EnderIOIntegration {
         NeoForge.EVENT_BUS.addListener(ChunkEvent.Unload.class, EnderIOIntegration::onChunkUnload);
         MarieAPI.registerGenericStateSyncHandler(EnderIOIntegration::onGenericStateSync);
         modEventBus.addListener(RegisterPayloadHandlersEvent.class, EnderIOIntegration::onRegisterPayloadHandlers);
+        MarieAPI.registerBlockHoverProvider(new EnderIONetworkHoverProvider());
     }
 
     /**
@@ -211,8 +216,26 @@ public final class EnderIOIntegration {
      * BlockEntity load/unload event for a class this mod doesn't own, so
      * chunk load/unload is the closest generic equivalent: on load, every
      * position in the chunk already holding a block entity is checked
-     * against the same {@code stirling_generator}/{@code conduit} types
-     * resolved in {@link #onRegisterCapabilities}.
+     * against the {@code stirling_generator} type resolved in
+     * {@link #onRegisterCapabilities}.
+     *
+     * <p>Deliberately does <em>not</em> also track {@code conduit} positions
+     * here. {@link EnderIONetworkPosition}, registered against the conduit
+     * type, already sums {@code getHeatOutput()} across an entire discovered
+     * network - including whichever generators feed it - whenever it is
+     * queried from any point on that network. Since a generator's conduits
+     * sit directly adjacent to it, tracking both the generator's own
+     * position and its conduit positions in the same flat
+     * {@link ActiveSourcePositions} set meant
+     * {@code SourceRadiationTickHandler} summed the generator's output once
+     * directly plus once again per nearby conduit segment - each reading the
+     * same whole-network total independently and on its own recompute-cache
+     * timer, which is what produced the large, rapidly swinging combined
+     * totals reported near a single stationary source. Only the generator
+     * position is tracked for direct radiation; {@link EnderIONetworkPosition}
+     * remains the network-summing view used exclusively for zone-conduit
+     * binding via {@code /thermal enderio bind}, entirely separate from
+     * {@link ActiveSourcePositions}.
      */
     private static void onChunkLoad(ChunkEvent.Load event) {
         if (!(event.getLevel() instanceof ServerLevel level)) {
@@ -236,13 +259,16 @@ public final class EnderIOIntegration {
         }
     }
 
+    /**
+     * Matches only the generator type - see the {@link #onChunkLoad}
+     * Javadoc for why conduit positions must not also be tracked here.
+     */
     private static boolean isTrackedSourceType(Level level, BlockPos pos) {
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (blockEntity == null) {
             return false;
         }
-        BlockEntityType<?> type = blockEntity.getType();
-        return type == stirlingGeneratorType || type == CONDUIT_BLOCK_ENTITY_TYPE;
+        return blockEntity.getType() == stirlingGeneratorType;
     }
 
     private static void onRegisterCapabilities(RegisterCapabilitiesEvent event) {

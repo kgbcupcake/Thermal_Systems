@@ -1,6 +1,7 @@
 package com.marie.thermalsystems.climate;
 
 import com.marie.thermalsystems.controller.ClimateMode;
+import com.marie.thermalsystems.data.config.ThermalConfig;
 import com.marie.thermalsystems.zone.ClimateZone;
 import com.marie.thermalsystems.zone.ZoneRegistry;
 import net.minecraft.resources.ResourceKey;
@@ -19,9 +20,6 @@ import java.util.UUID;
  */
 public class ClimateManager {
 
-    /** Starting temperature, in Celsius, for newly created zones. */
-    private static final double AMBIENT_STARTING_TEMPERATURE = 20.0;
-
     private static final ClimateManager INSTANCE = new ClimateManager();
 
     private final ZoneRegistry registry = new ZoneRegistry();
@@ -32,6 +30,19 @@ public class ClimateManager {
 
     public static ClimateManager get() {
         return INSTANCE;
+    }
+
+    /**
+     * Creates and registers a new zone using
+     * {@link ThermalConfig#DEFAULT_TARGET_TEMPERATURE} as its target
+     * temperature.
+     *
+     * @throws IllegalArgumentException if the name is null/empty or a zone
+     *                                   with that name already exists in the
+     *                                   level
+     */
+    public ClimateZone createZone(ResourceKey<Level> level, String name) {
+        return createZone(level, name, ThermalConfig.DEFAULT_TARGET_TEMPERATURE.get());
     }
 
     /**
@@ -53,7 +64,7 @@ public class ClimateManager {
         }
 
         ClimateZone zone = new ClimateZone(
-                UUID.randomUUID(), name, AMBIENT_STARTING_TEMPERATURE, targetTemp, ClimateMode.OFF);
+                UUID.randomUUID(), name, ThermalConfig.DEFAULT_AMBIENT_TEMPERATURE.get(), targetTemp, ClimateMode.OFF);
         registry.add(level, zone);
         return zone;
     }

@@ -181,14 +181,14 @@ public final class ZoneSourceScanner {
     }
 
     private static void logBound(ClimateZone zone, BlockPos pos) {
-        if (ThermalConfig.LOGGING_ENABLED.get()) {
+        if (ThermalConfig.LOGGING_ENABLED.get() && ThermalConfig.BINDING_LOGGING_ENABLED.get()) {
             LOGGER.info("[MTS] Zone={} auto-bound source at {} (radius={})",
                     zone.getName(), pos, ThermalConfig.SOURCE_BINDING_RADIUS.get());
         }
     }
 
     private static void logUnbound(ClimateZone zone, BlockPos pos) {
-        if (ThermalConfig.LOGGING_ENABLED.get()) {
+        if (ThermalConfig.LOGGING_ENABLED.get() && ThermalConfig.BINDING_LOGGING_ENABLED.get()) {
             LOGGER.info("[MTS] Zone={} auto-unbound source at {} (out of range)", zone.getName(), pos);
         }
     }

@@ -1,8 +1,11 @@
 package com.marie.thermalsystems.radiation;
 
+import com.marie.thermalsystems.data.config.ThermalConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.Map;
@@ -31,19 +34,28 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class ActiveSourcePositions {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ActiveSourcePositions.class);
+
     private static final Map<ResourceKey<Level>, Set<BlockPos>> POSITIONS = new ConcurrentHashMap<>();
 
     private ActiveSourcePositions() {
     }
 
     public static void add(Level level, BlockPos pos) {
-        POSITIONS.computeIfAbsent(level.dimension(), key -> ConcurrentHashMap.newKeySet()).add(pos.immutable());
+        BlockPos immutablePos = pos.immutable();
+        boolean added = POSITIONS.computeIfAbsent(level.dimension(), key -> ConcurrentHashMap.newKeySet()).add(immutablePos);
+        if (ThermalConfig.LOGGING_ENABLED.get() && ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
+            LOGGER.info("[MTS] ActiveSourcePositions add dim={} pos={} newlyAdded={}",
+                    level.dimension().location(), immutablePos, added);
+        }
     }
 
     public static void remove(Level level, BlockPos pos) {
         Set<BlockPos> positions = POSITIONS.get(level.dimension());
-        if (positions != null) {
-            positions.remove(pos);
+        boolean removed = positions != null && positions.remove(pos);
+        if (ThermalConfig.LOGGING_ENABLED.get() && ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
+            LOGGER.info("[MTS] ActiveSourcePositions remove dim={} pos={} wasPresent={}",
+                    level.dimension().location(), pos.immutable(), removed);
         }
     }
 

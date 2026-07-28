@@ -2,6 +2,7 @@ package com.marie.thermalsystems.integration.enderio;
 
 import com.marie.thermalsystems.api.heating.HeatSourceCapabilities;
 import com.marie.thermalsystems.api.heating.IHeatSource;
+import com.marie.thermalsystems.data.config.ThermalConfig;
 import dev.marie.framework.api.hover.BlockHoverProvider;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -66,6 +67,10 @@ public final class EnderIONetworkHoverProvider implements BlockHoverProvider {
 
     @Override
     public List<Component> renderLines(CompoundTag data, Level level, BlockPos pos) {
+        if (!ThermalConfig.HOVER_TOOLTIPS_ENABLED.get()) {
+            return List.of();
+        }
+
         List<Component> lines = new ArrayList<>();
 
         ListTag connected = data.getList("connected", 10);

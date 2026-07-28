@@ -9,8 +9,10 @@ import com.marie.thermalsystems.api.heating.HeatSourceCapabilities;
 import com.marie.thermalsystems.api.heating.IHeatSource;
 import com.marie.thermalsystems.data.config.ThermalConfig;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
@@ -56,7 +58,27 @@ public final class SourceRadiationTickHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SourceRadiationTickHandler.class);
 
+    /**
+     * Fixed, unique-to-this-caller id passed as {@link ITemperatureBridge}'s
+     * {@code sourceId} - see that interface's Javadoc. Identifies every call
+     * this handler makes as the "direct source radiation" contribution, kept
+     * distinct from {@code PlayerTemperatureBridgeHandler}'s own id so a
+     * bridge backed by a caller-keyed additive attribute system (like LSO)
+     * doesn't let one caller's contribution silently overwrite the other's.
+     * Never regenerate this value.
+     */
+    private static final UUID SOURCE_ID = UUID.fromString("3d7a9c1e-4f6b-4e2a-8c5d-2b9f7a1e6d4c");
+
     private static final Map<UUID, Double> LAST_RADIATED = new ConcurrentHashMap<>();
+
+    /**
+     * Tracks, per level, whether {@link ActiveSourcePositions#getAll} was
+     * empty on the previous tick this handler ran - purely diagnostic, so a
+     * source silently disappearing (e.g. an unexpected chunk-unload eviction)
+     * shows up as a single logged transition instead of either total silence
+     * or a log line every {@code sourceRadiationInterval} ticks forever.
+     */
+    private static final Map<ResourceKey<Level>, Boolean> LAST_POSITIONS_EMPTY = new ConcurrentHashMap<>();
 
     private static int tickCounter = 0;
 
@@ -80,6 +102,7 @@ public final class SourceRadiationTickHandler {
         int radius = ThermalConfig.SOURCE_RADIATION_RADIUS.get();
         for (ServerLevel level : event.getServer().getAllLevels()) {
             Set<BlockPos> positions = ActiveSourcePositions.getAll(level);
+            logIfPositionsEmptyChanged(level, positions.isEmpty());
             if (positions.isEmpty()) {
                 continue;
             }
@@ -93,6 +116,7 @@ public final class SourceRadiationTickHandler {
     public static void onServerStopping(ServerStoppingEvent event) {
         ActiveSourcePositions.clear();
         LAST_RADIATED.clear();
+        LAST_POSITIONS_EMPTY.clear();
     }
 
     private static void radiateTo(ServerLevel level, ServerPlayer player, Set<BlockPos> positions, int radius,
@@ -116,16 +140,38 @@ public final class SourceRadiationTickHandler {
         }
 
         if (!anyInRange) {
-            LAST_RADIATED.remove(player.getUUID());
+            Double previous = LAST_RADIATED.remove(player.getUUID());
+            if (previous != null && ThermalConfig.LOGGING_ENABLED.get() && ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
+                LOGGER.info("[MTS] Player={} no longer has a tracked source within radiation radius (was {})",
+                        player.getGameProfile().getName(), previous);
+            }
             return;
         }
 
         double radiatedTemperature = ThermalConfig.DEFAULT_AMBIENT_TEMPERATURE.get()
                 + ThermalConfig.HEAT_TRANSFER_COEFFICIENT.get() * net;
         for (ITemperatureBridge bridge : bridges) {
-            bridge.applyAmbientTemperature(player, radiatedTemperature);
+            bridge.applyAmbientTemperature(player, radiatedTemperature, SOURCE_ID);
         }
         logIfChanged(player, radiatedTemperature);
+    }
+
+    /**
+     * Logs only on transition (empty -&gt; non-empty or vice versa), not on
+     * every tick this handler runs, so a source silently disappearing from
+     * {@link ActiveSourcePositions} - e.g. an unexpected chunk-unload
+     * eviction - shows up as one clear log line instead of either total
+     * silence or unbounded repetition.
+     */
+    private static void logIfPositionsEmptyChanged(ServerLevel level, boolean empty) {
+        if (!ThermalConfig.LOGGING_ENABLED.get() || !ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
+            return;
+        }
+        Boolean previous = LAST_POSITIONS_EMPTY.put(level.dimension(), empty);
+        if (previous == null || previous.booleanValue() != empty) {
+            LOGGER.info("[MTS] ActiveSourcePositions for dim={} is now {}",
+                    level.dimension().location(), empty ? "empty (no tracked sources)" : "non-empty");
+        }
     }
 
     private static int chebyshevDistance(BlockPos a, BlockPos b) {
@@ -133,7 +179,7 @@ public final class SourceRadiationTickHandler {
     }
 
     private static void logIfChanged(ServerPlayer player, double radiatedTemperature) {
-        if (!ThermalConfig.LOGGING_ENABLED.get()) {
+        if (!ThermalConfig.LOGGING_ENABLED.get() || !ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
             return;
         }
         Double previous = LAST_RADIATED.put(player.getUUID(), radiatedTemperature);

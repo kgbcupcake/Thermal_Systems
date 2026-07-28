@@ -22,6 +22,11 @@ repositories {
         url = "https://modmaven.dev"
     }
     maven {
+        // Hosts Cloth Config, which backs the client config screen.
+        name = "Architectury"
+        url = "https://maven.architectury.dev/"
+    }
+    maven {
         // Hosts Legendary Survival Overhaul, which isn't mirrored on ModMaven.
         // See integration/lso/LSOIntegration.java.
         name = "Modrinth"
@@ -82,6 +87,11 @@ dependencies {
     if (!gradle.ext.localMariesFrameworkPresent) {
         additionalRuntimeClasspath "dev.marie.MariesLib:marieslib:${maries_lib_version}"
     }
+
+    // Cloth Config backs the client config screen (see client/config/).
+    // Not exposed transitively by marieslib (implementation-scoped there), so
+    // Thermal Systems needs its own copy, same as Nourished.
+    implementation "me.shedaniel.cloth:cloth-config-neoforge:${cloth_config_version}"
 
     // Compile-time only: PNC:R integration must remain optional at runtime.
     // See integration/pneumaticcraft/PneumaticCraftIntegration.java.

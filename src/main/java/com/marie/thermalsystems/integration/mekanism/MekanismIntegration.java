@@ -4,8 +4,10 @@ import com.marie.thermalsystems.api.ThermalSystemsAPI;
 import com.marie.thermalsystems.api.cooling.CoolingSourceCapabilities;
 import com.marie.thermalsystems.api.heating.HeatSourceCapabilities;
 import com.marie.thermalsystems.api.zone.ZoneSnapshot;
+import com.marie.thermalsystems.data.config.ThermalConfig;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import dev.marie.framework.api.marieapi.MarieAPI;
 import mekanism.api.heat.IHeatHandler;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -121,9 +123,13 @@ public final class MekanismIntegration {
     }
 
     public static void init(IEventBus modEventBus) {
+        if (!ThermalConfig.MEKANISM_ENABLED.get()) {
+            return;
+        }
         modEventBus.addListener(RegisterCapabilitiesEvent.class, MekanismIntegration::onRegisterCapabilities);
         NeoForge.EVENT_BUS.addListener(RegisterCommandsEvent.class, MekanismIntegration::onRegisterCommands);
         NeoForge.EVENT_BUS.addListener(ServerStoppingEvent.class, MekanismIntegration::onServerStopping);
+        MarieAPI.registerBlockHoverProvider(new MekanismNetworkHoverProvider());
     }
 
     private static void onServerStopping(ServerStoppingEvent event) {

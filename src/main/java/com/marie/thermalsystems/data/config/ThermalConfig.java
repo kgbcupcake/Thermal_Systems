@@ -14,7 +14,10 @@ public final class ThermalConfig {
     public static final ModConfigSpec.DoubleValue TEMPERATURE_CONVERGENCE_RATE;
     public static final ModConfigSpec.DoubleValue MINIMUM_TEMPERATURE;
     public static final ModConfigSpec.DoubleValue MAXIMUM_TEMPERATURE;
+    public static final ModConfigSpec.DoubleValue DEFAULT_TARGET_TEMPERATURE;
     public static final ModConfigSpec.BooleanValue LOGGING_ENABLED;
+    public static final ModConfigSpec.BooleanValue RADIATION_LOGGING_ENABLED;
+    public static final ModConfigSpec.BooleanValue BINDING_LOGGING_ENABLED;
 
     public static final ModConfigSpec.IntValue PLAYER_BRIDGE_INTERVAL;
     public static final ModConfigSpec.DoubleValue DEFAULT_AMBIENT_TEMPERATURE;
@@ -25,15 +28,24 @@ public final class ThermalConfig {
     public static final ModConfigSpec.IntValue SOURCE_RADIATION_RADIUS;
     public static final ModConfigSpec.IntValue SOURCE_RADIATION_INTERVAL;
 
+    public static final ModConfigSpec.BooleanValue HOVER_TOOLTIPS_ENABLED;
+
+    public static final ModConfigSpec.BooleanValue PNEUMATICCRAFT_ENABLED;
     public static final ModConfigSpec.DoubleValue PNEUMATICCRAFT_REFERENCE_TEMPERATURE_KELVIN;
     public static final ModConfigSpec.DoubleValue PNEUMATICCRAFT_EXCHANGER_CONVERSION_COEFFICIENT;
 
+    public static final ModConfigSpec.BooleanValue MEKANISM_ENABLED;
     public static final ModConfigSpec.DoubleValue MEKANISM_REFERENCE_TEMPERATURE_KELVIN;
     public static final ModConfigSpec.DoubleValue MEKANISM_CONVERSION_COEFFICIENT;
     public static final ModConfigSpec.IntValue MEKANISM_NETWORK_RECOMPUTE_INTERVAL;
 
+    public static final ModConfigSpec.BooleanValue ENDERIO_ENABLED;
     public static final ModConfigSpec.DoubleValue ENDERIO_ENERGY_TO_HEAT_COEFFICIENT;
+    public static final ModConfigSpec.DoubleValue ENDERIO_OUTPUT_MULTIPLIER;
     public static final ModConfigSpec.IntValue ENDERIO_NETWORK_RECOMPUTE_INTERVAL;
+
+    public static final ModConfigSpec.BooleanValue LSO_ENABLED;
+    public static final ModConfigSpec.DoubleValue LSO_TEMPERATURE_OFFSET;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -60,9 +72,24 @@ public final class ThermalConfig {
                 .comment("Clamp ceiling, in Celsius.")
                 .defineInRange("maximumTemperature", 50.0, -Double.MAX_VALUE, Double.MAX_VALUE);
 
+        DEFAULT_TARGET_TEMPERATURE = builder
+                .comment("Target temperature, in Celsius, for a newly created zone when none is specified.")
+                .defineInRange("defaultTargetTemperature", 20.0, -Double.MAX_VALUE, Double.MAX_VALUE);
+
         LOGGING_ENABLED = builder
-                .comment("Gates per-interval log output.")
+                .comment("Master switch gating per-interval log output. When false, silences everything below",
+                        "regardless of the sub-flags' own values.")
                 .define("loggingEnabled", true);
+
+        RADIATION_LOGGING_ENABLED = builder
+                .comment("Sub-flag gating SourceRadiationTickHandler/ActiveSourcePositions logging. Only takes",
+                        "effect when loggingEnabled is also true.")
+                .define("radiationLoggingEnabled", true);
+
+        BINDING_LOGGING_ENABLED = builder
+                .comment("Sub-flag gating ZoneSourceScanner/ZoneSourceBindingTickHandler logging. Only takes effect",
+                        "when loggingEnabled is also true.")
+                .define("bindingLoggingEnabled", true);
 
         builder.pop();
 
@@ -92,9 +119,19 @@ public final class ThermalConfig {
                 .comment("Ticks between direct source-to-player radiation applications.")
                 .defineInRange("sourceRadiationInterval", 20, 1, Integer.MAX_VALUE);
 
+        HOVER_TOOLTIPS_ENABLED = builder
+                .comment("Gates the integration network hover tooltips (Ender IO, Mekanism, PneumaticCraft).")
+                .define("hoverTooltipsEnabled", true);
+
         builder.pop();
 
         builder.push("pneumaticcraft");
+
+        PNEUMATICCRAFT_ENABLED = builder
+                .comment("Config-level on/off switch for the PneumaticCraft: Repressurized integration. Separate from",
+                        "whether PneumaticCraft: Repressurized is actually installed - both must be true for the",
+                        "integration to activate.")
+                .define("enabled", true);
 
         PNEUMATICCRAFT_REFERENCE_TEMPERATURE_KELVIN = builder
                 .comment("Baseline temperature, in Kelvin, for Thermal Exchanger conversion.")
@@ -107,6 +144,11 @@ public final class ThermalConfig {
         builder.pop();
 
         builder.push("mekanism");
+
+        MEKANISM_ENABLED = builder
+                .comment("Config-level on/off switch for the Mekanism integration. Separate from whether Mekanism is",
+                        "actually installed - both must be true for the integration to activate.")
+                .define("enabled", true);
 
         MEKANISM_REFERENCE_TEMPERATURE_KELVIN = builder
                 .comment("Baseline temperature, in Kelvin, for Mekanism Heat Exchanger conversion. Matches Mekanism's own ambient temperature (HeatAPI.AMBIENT_TEMP) by default.")
@@ -124,13 +166,36 @@ public final class ThermalConfig {
 
         builder.push("enderio");
 
+        ENDERIO_ENABLED = builder
+                .comment("Config-level on/off switch for the Ender IO integration. Separate from whether Ender IO is",
+                        "actually installed - both must be true for the integration to activate.")
+                .define("enabled", true);
+
         ENDERIO_ENERGY_TO_HEAT_COEFFICIENT = builder
                 .comment("Scales the FE an Ender IO Stirling Generator currently holds in storage into Thermal Systems heat output.")
                 .defineInRange("energyToHeatCoefficient", 0.001, 0.0, Double.MAX_VALUE);
 
+        ENDERIO_OUTPUT_MULTIPLIER = builder
+                .comment("Direct intensity knob applied on top of energyToHeatCoefficient to scale the final Ender IO heat/cooling output hotter or colder, with no pretense of physical accuracy.")
+                .defineInRange("outputMultiplier", 1.0, 0.0, Double.MAX_VALUE);
+
         ENDERIO_NETWORK_RECOMPUTE_INTERVAL = builder
                 .comment("Ticks an Ender IO conduit network's heat sum is cached for before being recomputed on next read.")
                 .defineInRange("networkRecomputeInterval", 20, 1, Integer.MAX_VALUE);
+
+        builder.pop();
+
+        builder.push("lso");
+
+        LSO_ENABLED = builder
+                .comment("Config-level on/off switch for the Legendary Survival Overhaul integration. Separate from",
+                        "whether Legendary Survival Overhaul is actually installed - both must be true for the",
+                        "integration to activate.")
+                .define("enabled", true);
+
+        LSO_TEMPERATURE_OFFSET = builder
+                .comment("Neutral ambient temperature, in Celsius, that Legendary Survival Overhaul treats as its zero-delta point. Matches TemperatureEnum.NORMAL's center by default.")
+                .defineInRange("temperatureOffset", 20.0, -Double.MAX_VALUE, Double.MAX_VALUE);
 
         builder.pop();
 
