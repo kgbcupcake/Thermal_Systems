@@ -20,3 +20,7 @@ Thermal_banner.png
 .directory
 /.claude/CLAUDE.md
 /.claude/settings.json
+/.obsidian/app.json
+/.obsidian/appearance.json
+/.obsidian/core-plugins.json
+/.obsidian/workspace.json

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="Thermal_banner.png" alt="Thermal Systems" width="600"/>
+![Banner](Thermal_banner.png)
 
 # 🌡️ Thermal Systems
 
