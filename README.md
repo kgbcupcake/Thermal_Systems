@@ -1,6 +1,5 @@
 <div align="center">
 
-![Banner](Thermal_banner.png)
 
 # 🌡️ Thermal Systems
 
