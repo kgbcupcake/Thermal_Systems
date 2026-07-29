@@ -4,6 +4,7 @@ import com.marie.thermalsystems.client.config.ThermalContextRegistration;
 import com.marie.thermalsystems.client.config.ThermalSystemsConfigScreen;
 import com.marie.thermalsystems.data.config.ThermalConfig;
 import com.marie.thermalsystems.hover.ThermalHoverProvider;
+import com.marie.thermalsystems.hud.ThermalSystemsHud;
 import com.marie.thermalsystems.integration.coldsweat.ColdSweatIntegration;
 import com.marie.thermalsystems.integration.enderio.EnderIOIntegration;
 import com.marie.thermalsystems.integration.lso.LSOIntegration;
@@ -45,6 +46,11 @@ import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
  * construction - so the integration inits, which each check an
  * {@code enabled} flag as their first line, cannot run in the constructor.
  * They're deferred to a {@link ModConfigEvent.Loading} listener instead.
+ *
+ * <p>{@link ThermalSystemsHud#init(IEventBus)} is the one exception to "config and optional
+ * integrations" - it registers {@code SystemToggleRequestPayload} for the persistent Thermal
+ * Systems control panel HUD, core mod functionality rather than a foreign-mod integration, so it's
+ * called unconditionally here rather than from {@link #initIntegrations(IEventBus)}.
  */
 @Mod(ThermalSystemsMod.MOD_ID)
 public class ThermalSystemsMod {
@@ -55,6 +61,7 @@ public class ThermalSystemsMod {
         MarieBootstrap.attachFrameworkServices(modEventBus);
         MarieAPI.registerBlockHoverProvider(new ThermalHoverProvider());
         ThermalContextRegistration.register(MOD_ID);
+        ThermalSystemsHud.init(modEventBus);
 
         modContainer.registerConfig(ModConfig.Type.COMMON, ThermalConfig.SPEC);
 

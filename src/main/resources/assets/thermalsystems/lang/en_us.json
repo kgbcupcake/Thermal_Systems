@@ -1,6 +1,7 @@
 {
   "key.categories.thermalsystems": "Thermal Systems",
   "key.thermalsystems.editEnderIOTogglePosition": "Toggle Reposition Mode (Ender IO Heat/Cool Toggle)",
+  "key.thermalsystems.toggleControlPanel": "Toggle Thermal Systems Control Panel",
 
   "config.thermalsystems.title": "Thermal Systems Configuration",
 
@@ -13,6 +14,8 @@
   "config.thermalsystems.category.lso": "LSO",
   "config.thermalsystems.category.coldsweat": "Cold Sweat",
 
+  "config.thermalsystems.systemEnabled": "System Enabled",
+  "config.thermalsystems.systemEnabled.desc": "Master on/off switch, also surfaced by the persistent Thermal Systems control panel HUD's own toggle.",
   "config.thermalsystems.simulationTickInterval": "Simulation Tick Interval",
   "config.thermalsystems.simulationTickInterval.desc": "Ticks between simulation updates.",
   "config.thermalsystems.heatTransferCoefficient": "Heat Transfer Coefficient",

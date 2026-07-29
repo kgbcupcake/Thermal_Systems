@@ -18,6 +18,7 @@ public final class ThermalConfigIO {
         JsonObject root = new JsonObject();
 
         JsonObject simulation = new JsonObject();
+        simulation.addProperty("systemEnabled", ThermalConfig.SYSTEM_ENABLED.get());
         simulation.addProperty("simulationTickInterval", ThermalConfig.SIMULATION_TICK_INTERVAL.get());
         simulation.addProperty("heatTransferCoefficient", ThermalConfig.HEAT_TRANSFER_COEFFICIENT.get());
         simulation.addProperty("temperatureConvergenceRate", ThermalConfig.TEMPERATURE_CONVERGENCE_RATE.get());
@@ -70,6 +71,7 @@ public final class ThermalConfigIO {
 
     public static void applyRoot(JsonObject root) {
         applySection(root, "simulation", s -> {
+            applyBoolean(s, "systemEnabled", ThermalConfig.SYSTEM_ENABLED);
             applyInt(s, "simulationTickInterval", ThermalConfig.SIMULATION_TICK_INTERVAL);
             applyDouble(s, "heatTransferCoefficient", ThermalConfig.HEAT_TRANSFER_COEFFICIENT);
             applyDouble(s, "temperatureConvergenceRate", ThermalConfig.TEMPERATURE_CONVERGENCE_RATE);

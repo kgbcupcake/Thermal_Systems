@@ -9,7 +9,7 @@
         "group": "Mod Development - thermalsystems",
         "order": 0
       },
-      "projectName": "thermalsystems",
+      "projectName": "thermalsystems-Thermal_Systems",
       "mainClass": "net.neoforged.devlaunch.Main",
       "args": [
         "@/home/only/RiderProjects/Thermal_Systems/build/moddev/clientRunProgramArgs.txt"
@@ -31,7 +31,7 @@
         "group": "Mod Development - thermalsystems",
         "order": 1
       },
-      "projectName": "thermalsystems",
+      "projectName": "thermalsystems-Thermal_Systems",
       "mainClass": "net.neoforged.devlaunch.Main",
       "args": [
         "@/home/only/RiderProjects/Thermal_Systems/build/moddev/dataRunProgramArgs.txt"
@@ -53,7 +53,7 @@
         "group": "Mod Development - thermalsystems",
         "order": 2
       },
-      "projectName": "thermalsystems",
+      "projectName": "thermalsystems-Thermal_Systems",
       "mainClass": "net.neoforged.devlaunch.Main",
       "args": [
         "@/home/only/RiderProjects/Thermal_Systems/build/moddev/serverRunProgramArgs.txt"

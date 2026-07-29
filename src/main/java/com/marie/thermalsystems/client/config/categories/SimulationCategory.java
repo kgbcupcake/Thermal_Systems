@@ -14,6 +14,14 @@ public final class SimulationCategory {
         ConfigCategory category = builder.getOrCreateCategory(Component.translatable("config.thermalsystems.category.simulation"));
 
         category.addEntry(
+                eb.startBooleanToggle(Component.translatable("config.thermalsystems.systemEnabled"), ThermalConfig.SYSTEM_ENABLED.get())
+                        .setDefaultValue(true)
+                        .setTooltip(Component.translatable("config.thermalsystems.systemEnabled.desc"))
+                        .setSaveConsumer(ThermalConfig.SYSTEM_ENABLED::set)
+                        .build()
+        );
+
+        category.addEntry(
                 eb.startIntField(Component.translatable("config.thermalsystems.simulationTickInterval"), ThermalConfig.SIMULATION_TICK_INTERVAL.get())
                         .setDefaultValue(20)
                         .setMin(1)

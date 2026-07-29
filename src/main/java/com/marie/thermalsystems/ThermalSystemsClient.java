@@ -1,5 +1,6 @@
 package com.marie.thermalsystems;
 
+import com.marie.thermalsystems.client.hud.ThermalSystemsHudClient;
 import com.marie.thermalsystems.integration.enderio.EnderIOClientIntegration;
 import com.marie.thermalsystems.integration.enderio.EnderIOIntegration;
 import net.neoforged.api.distmarker.Dist;
@@ -21,6 +22,8 @@ import net.neoforged.fml.common.Mod;
 public final class ThermalSystemsClient {
 
     public ThermalSystemsClient(IEventBus modEventBus) {
+        ThermalSystemsHudClient.init(modEventBus);
+
         if (ModList.get().isLoaded(EnderIOIntegration.ENDERIO_MOD_ID)) {
             EnderIOClientIntegration.init(modEventBus);
         }

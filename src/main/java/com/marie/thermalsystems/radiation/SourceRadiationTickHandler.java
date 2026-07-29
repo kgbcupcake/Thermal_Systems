@@ -89,12 +89,20 @@ public final class SourceRadiationTickHandler {
     private static final Map<ResourceKey<Level>, Boolean> LAST_POSITIONS_EMPTY = new ConcurrentHashMap<>();
 
     private static int tickCounter = 0;
+    private static Boolean wasEnabled = null;
 
     private SourceRadiationTickHandler() {
     }
 
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
+        boolean enabled = ThermalConfig.SYSTEM_ENABLED.get();
+        logIfEnabledChanged(enabled);
+        if (!enabled) {
+            tickCounter = 0;
+            return;
+        }
+
         int interval = ThermalConfig.SOURCE_RADIATION_INTERVAL.get();
         tickCounter++;
         if (tickCounter < interval) {
@@ -185,6 +193,19 @@ public final class SourceRadiationTickHandler {
         if (previous != null && ThermalConfig.LOGGING_ENABLED.get() && ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
             LOGGER.info("[MTS] Player={} no longer has a tracked source within radiation radius (was {})",
                     player.getGameProfile().getName(), previous);
+        }
+    }
+
+    private static void logIfEnabledChanged(boolean enabled) {
+        Boolean previous = wasEnabled;
+        wasEnabled = enabled;
+        if (previous == null || previous.booleanValue() == enabled || !ThermalConfig.LOGGING_ENABLED.get()) {
+            return;
+        }
+        if (enabled) {
+            LOGGER.info("[MTS] SourceRadiationTickHandler simulation resumed (SYSTEM_ENABLED=true)");
+        } else {
+            LOGGER.info("[MTS] SourceRadiationTickHandler simulation paused (SYSTEM_ENABLED=false)");
         }
     }
 

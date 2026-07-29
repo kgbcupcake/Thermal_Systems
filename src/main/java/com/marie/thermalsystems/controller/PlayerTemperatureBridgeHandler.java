@@ -11,6 +11,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +29,8 @@ import java.util.UUID;
 @EventBusSubscriber(modid = ThermalSystemsMod.MOD_ID)
 public final class PlayerTemperatureBridgeHandler {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(PlayerTemperatureBridgeHandler.class);
+
     /**
      * Fixed, unique-to-this-caller id passed as {@link ITemperatureBridge}'s
      * {@code sourceId} - see that interface's Javadoc. Identifies every call
@@ -39,12 +43,20 @@ public final class PlayerTemperatureBridgeHandler {
     private static final UUID SOURCE_ID = UUID.fromString("8f2e6f2c-9b1a-4a3e-9d3a-1c6a8e5f2b7d");
 
     private static int tickCounter = 0;
+    private static Boolean wasEnabled = null;
 
     private PlayerTemperatureBridgeHandler() {
     }
 
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
+        boolean enabled = ThermalConfig.SYSTEM_ENABLED.get();
+        logIfEnabledChanged(enabled);
+        if (!enabled) {
+            tickCounter = 0;
+            return;
+        }
+
         int interval = ThermalConfig.PLAYER_BRIDGE_INTERVAL.get();
         tickCounter++;
         if (tickCounter < interval) {
@@ -66,6 +78,19 @@ public final class PlayerTemperatureBridgeHandler {
                     bridge.applyAmbientTemperature(player, temperature, SOURCE_ID);
                 }
             }
+        }
+    }
+
+    private static void logIfEnabledChanged(boolean enabled) {
+        Boolean previous = wasEnabled;
+        wasEnabled = enabled;
+        if (previous == null || previous.booleanValue() == enabled || !ThermalConfig.LOGGING_ENABLED.get()) {
+            return;
+        }
+        if (enabled) {
+            LOGGER.info("[MTS] PlayerTemperatureBridgeHandler simulation resumed (SYSTEM_ENABLED=true)");
+        } else {
+            LOGGER.info("[MTS] PlayerTemperatureBridgeHandler simulation paused (SYSTEM_ENABLED=false)");
         }
     }
 }

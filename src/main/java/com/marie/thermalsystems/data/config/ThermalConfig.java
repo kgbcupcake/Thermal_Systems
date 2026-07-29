@@ -9,6 +9,7 @@ public final class ThermalConfig {
 
     public static final ModConfigSpec SPEC;
 
+    public static final ModConfigSpec.BooleanValue SYSTEM_ENABLED;
     public static final ModConfigSpec.IntValue SIMULATION_TICK_INTERVAL;
     public static final ModConfigSpec.DoubleValue HEAT_TRANSFER_COEFFICIENT;
     public static final ModConfigSpec.DoubleValue TEMPERATURE_CONVERGENCE_RATE;
@@ -56,6 +57,13 @@ public final class ThermalConfig {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
 
         builder.push("simulation");
+
+        SYSTEM_ENABLED = builder
+                .comment("Master on/off switch surfaced by the persistent Thermal Systems control panel HUD's",
+                        "'System Enabled' toggle (see com.marie.thermalsystems.client.hud.ThermalSystemsControlPanel).",
+                        "Not yet consumed by ClimateTickHandler or any other tick handler - flipping it here only",
+                        "changes what's persisted/displayed until those systems are wired to check it.")
+                .define("systemEnabled", true);
 
         SIMULATION_TICK_INTERVAL = builder
                 .comment("Ticks between simulation updates.")

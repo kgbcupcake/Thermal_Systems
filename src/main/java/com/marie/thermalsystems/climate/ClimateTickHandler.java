@@ -20,12 +20,20 @@ public final class ClimateTickHandler {
     private static final int TICKS_PER_SECOND = 20;
 
     private static int tickCounter = 0;
+    private static Boolean wasEnabled = null;
 
     private ClimateTickHandler() {
     }
 
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
+        boolean enabled = ThermalConfig.SYSTEM_ENABLED.get();
+        logIfEnabledChanged(enabled);
+        if (!enabled) {
+            tickCounter = 0;
+            return;
+        }
+
         int interval = ThermalConfig.SIMULATION_TICK_INTERVAL.get();
         tickCounter++;
         if (tickCounter < interval) {
@@ -44,6 +52,19 @@ public final class ClimateTickHandler {
                         String.format("%.2f", result.zone().getTargetTemp()),
                         result.totalHeatOutput());
             }
+        }
+    }
+
+    private static void logIfEnabledChanged(boolean enabled) {
+        Boolean previous = wasEnabled;
+        wasEnabled = enabled;
+        if (previous == null || previous.booleanValue() == enabled || !ThermalConfig.LOGGING_ENABLED.get()) {
+            return;
+        }
+        if (enabled) {
+            LOGGER.info("[MTS] ClimateTickHandler simulation resumed (SYSTEM_ENABLED=true)");
+        } else {
+            LOGGER.info("[MTS] ClimateTickHandler simulation paused (SYSTEM_ENABLED=false)");
         }
     }
 }
