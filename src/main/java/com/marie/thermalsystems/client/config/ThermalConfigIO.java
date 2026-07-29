@@ -35,6 +35,7 @@ public final class ThermalConfigIO {
         integration.addProperty("sourceScanInterval", ThermalConfig.SOURCE_BINDING_SCAN_INTERVAL.get());
         integration.addProperty("sourceRadiationRadius", ThermalConfig.SOURCE_RADIATION_RADIUS.get());
         integration.addProperty("sourceRadiationInterval", ThermalConfig.SOURCE_RADIATION_INTERVAL.get());
+        integration.addProperty("sourceTrackingReverifyInterval", ThermalConfig.SOURCE_TRACKING_REVERIFY_INTERVAL.get());
         integration.addProperty("hoverTooltipsEnabled", ThermalConfig.HOVER_TOOLTIPS_ENABLED.get());
         root.add("integration", integration);
 
@@ -59,6 +60,11 @@ public final class ThermalConfigIO {
         lso.addProperty("temperatureOffset", ThermalConfig.LSO_TEMPERATURE_OFFSET.get());
         root.add("lso", lso);
 
+        JsonObject coldsweat = new JsonObject();
+        coldsweat.addProperty("temperatureOffset", ThermalConfig.COLDSWEAT_TEMPERATURE_OFFSET.get());
+        coldsweat.addProperty("outputScale", ThermalConfig.COLDSWEAT_OUTPUT_SCALE.get());
+        root.add("coldsweat", coldsweat);
+
         return root;
     }
 
@@ -80,6 +86,7 @@ public final class ThermalConfigIO {
             applyInt(s, "sourceScanInterval", ThermalConfig.SOURCE_BINDING_SCAN_INTERVAL);
             applyInt(s, "sourceRadiationRadius", ThermalConfig.SOURCE_RADIATION_RADIUS);
             applyInt(s, "sourceRadiationInterval", ThermalConfig.SOURCE_RADIATION_INTERVAL);
+            applyInt(s, "sourceTrackingReverifyInterval", ThermalConfig.SOURCE_TRACKING_REVERIFY_INTERVAL);
             applyBoolean(s, "hoverTooltipsEnabled", ThermalConfig.HOVER_TOOLTIPS_ENABLED);
         });
         applySection(root, "pneumaticcraft", s -> {
@@ -98,6 +105,10 @@ public final class ThermalConfigIO {
         });
         applySection(root, "lso", s ->
                 applyDouble(s, "temperatureOffset", ThermalConfig.LSO_TEMPERATURE_OFFSET));
+        applySection(root, "coldsweat", s -> {
+            applyDouble(s, "temperatureOffset", ThermalConfig.COLDSWEAT_TEMPERATURE_OFFSET);
+            applyDouble(s, "outputScale", ThermalConfig.COLDSWEAT_OUTPUT_SCALE);
+        });
     }
 
     private interface SectionApplier {

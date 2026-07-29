@@ -69,6 +69,15 @@ public final class IntegrationCategory {
         );
 
         category.addEntry(
+                eb.startIntField(Component.translatable("config.thermalsystems.sourceTrackingReverifyInterval"), ThermalConfig.SOURCE_TRACKING_REVERIFY_INTERVAL.get())
+                        .setDefaultValue(100)
+                        .setMin(1)
+                        .setTooltip(Component.translatable("config.thermalsystems.sourceTrackingReverifyInterval.desc"))
+                        .setSaveConsumer(ThermalConfig.SOURCE_TRACKING_REVERIFY_INTERVAL::set)
+                        .build()
+        );
+
+        category.addEntry(
                 eb.startBooleanToggle(Component.translatable("config.thermalsystems.hoverTooltipsEnabled"), ThermalConfig.HOVER_TOOLTIPS_ENABLED.get())
                         .setDefaultValue(true)
                         .setTooltip(Component.translatable("config.thermalsystems.hoverTooltipsEnabled.desc"))

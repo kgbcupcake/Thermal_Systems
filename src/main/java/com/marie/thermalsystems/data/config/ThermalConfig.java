@@ -27,6 +27,7 @@ public final class ThermalConfig {
 
     public static final ModConfigSpec.IntValue SOURCE_RADIATION_RADIUS;
     public static final ModConfigSpec.IntValue SOURCE_RADIATION_INTERVAL;
+    public static final ModConfigSpec.IntValue SOURCE_TRACKING_REVERIFY_INTERVAL;
 
     public static final ModConfigSpec.BooleanValue HOVER_TOOLTIPS_ENABLED;
 
@@ -46,6 +47,10 @@ public final class ThermalConfig {
 
     public static final ModConfigSpec.BooleanValue LSO_ENABLED;
     public static final ModConfigSpec.DoubleValue LSO_TEMPERATURE_OFFSET;
+
+    public static final ModConfigSpec.BooleanValue COLDSWEAT_ENABLED;
+    public static final ModConfigSpec.DoubleValue COLDSWEAT_TEMPERATURE_OFFSET;
+    public static final ModConfigSpec.DoubleValue COLDSWEAT_OUTPUT_SCALE;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -118,6 +123,14 @@ public final class ThermalConfig {
         SOURCE_RADIATION_INTERVAL = builder
                 .comment("Ticks between direct source-to-player radiation applications.")
                 .defineInRange("sourceRadiationInterval", 20, 1, Integer.MAX_VALUE);
+
+        SOURCE_TRACKING_REVERIFY_INTERVAL = builder
+                .comment("Ticks between periodic ActiveSourcePositions re-verification passes that re-check",
+                        "every currently tracked position still resolves to the expected block type,",
+                        "independent of chunk load/unload event timing. Discovery of new positions is handled",
+                        "instantly by block place/break events, not by this pass. Set to a very large value to",
+                        "effectively disable.")
+                .defineInRange("sourceTrackingReverifyInterval", 100, 1, Integer.MAX_VALUE);
 
         HOVER_TOOLTIPS_ENABLED = builder
                 .comment("Gates the integration network hover tooltips (Ender IO, Mekanism, PneumaticCraft).")
@@ -196,6 +209,29 @@ public final class ThermalConfig {
         LSO_TEMPERATURE_OFFSET = builder
                 .comment("Neutral ambient temperature, in Celsius, that Legendary Survival Overhaul treats as its zero-delta point. Matches TemperatureEnum.NORMAL's center by default.")
                 .defineInRange("temperatureOffset", 20.0, -Double.MAX_VALUE, Double.MAX_VALUE);
+
+        builder.pop();
+
+        builder.push("coldsweat");
+
+        COLDSWEAT_ENABLED = builder
+                .comment("Config-level on/off switch for the Cold Sweat integration. Separate from whether Cold",
+                        "Sweat is actually installed - both must be true for the integration to activate.")
+                .define("enabled", true);
+
+        COLDSWEAT_TEMPERATURE_OFFSET = builder
+                .comment("Neutral ambient temperature, in Celsius, that Cold Sweat treats as its zero-delta point.",
+                        "Matches defaultAmbientTemperature by default.")
+                .defineInRange("temperatureOffset", 20.0, -Double.MAX_VALUE, Double.MAX_VALUE);
+
+        COLDSWEAT_OUTPUT_SCALE = builder
+                .comment("Scales the Celsius delta from temperatureOffset into the int strength WarmthTempModifier/",
+                        "FrigidnessTempModifier expect. Cold Sweat's own Hearth block (the reference for what",
+                        "'meaningfully warm' looks like) typically passes a strength of 0 or 1 - ThermalSourceTempModifier",
+                        "further multiplies that by ConfigSettings.THERMAL_SOURCE_STRENGTH (0.75 by default) against a",
+                        "MIN_TEMP/MAX_TEMP comfortable range that only spans about 1.2 units - so a strength of 1 is",
+                        "already a strong effect. The default here keeps a 10C delta at roughly strength 1.")
+                .defineInRange("outputScale", 0.1, 0.0, Double.MAX_VALUE);
 
         builder.pop();
 

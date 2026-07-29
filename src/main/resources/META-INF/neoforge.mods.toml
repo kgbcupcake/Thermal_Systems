@@ -58,3 +58,10 @@ logoFile ="Thermal_icon.png"
     versionRange = "${lso_version_range}"
     ordering = "NONE"
     side = "BOTH"
+
+[[dependencies.${mod_id}]]
+    modId = "cold_sweat"
+    type = "optional"
+    versionRange = "${cold_sweat_version_range}"
+    ordering = "NONE"
+    side = "BOTH"

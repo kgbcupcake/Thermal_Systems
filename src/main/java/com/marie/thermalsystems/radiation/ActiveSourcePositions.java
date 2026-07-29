@@ -41,21 +41,33 @@ public final class ActiveSourcePositions {
     private ActiveSourcePositions() {
     }
 
-    public static void add(Level level, BlockPos pos) {
+    /**
+     * @param reason short, fixed diagnostic tag identifying which code path
+     *               triggered this add (e.g. {@code "chunk load"},
+     *               {@code "periodic reverify"}) - always logged, so a future
+     *               tracking-loss incident can be diagnosed from logs alone
+     *               instead of requiring another multi-message investigation.
+     */
+    public static void add(Level level, BlockPos pos, String reason) {
         BlockPos immutablePos = pos.immutable();
         boolean added = POSITIONS.computeIfAbsent(level.dimension(), key -> ConcurrentHashMap.newKeySet()).add(immutablePos);
         if (ThermalConfig.LOGGING_ENABLED.get() && ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
-            LOGGER.info("[MTS] ActiveSourcePositions add dim={} pos={} newlyAdded={}",
-                    level.dimension().location(), immutablePos, added);
+            LOGGER.info("[MTS] ActiveSourcePositions add dim={} pos={} newlyAdded={} reason={}",
+                    level.dimension().location(), immutablePos, added, reason);
         }
     }
 
-    public static void remove(Level level, BlockPos pos) {
+    /**
+     * @param reason short, fixed diagnostic tag identifying which code path
+     *               triggered this removal (e.g. {@code "chunk unload"},
+     *               {@code "periodic reverify"}) - see {@link #add} Javadoc.
+     */
+    public static void remove(Level level, BlockPos pos, String reason) {
         Set<BlockPos> positions = POSITIONS.get(level.dimension());
         boolean removed = positions != null && positions.remove(pos);
         if (ThermalConfig.LOGGING_ENABLED.get() && ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
-            LOGGER.info("[MTS] ActiveSourcePositions remove dim={} pos={} wasPresent={}",
-                    level.dimension().location(), pos.immutable(), removed);
+            LOGGER.info("[MTS] ActiveSourcePositions remove dim={} pos={} wasPresent={} reason={}",
+                    level.dimension().location(), pos.immutable(), removed, reason);
         }
     }
 

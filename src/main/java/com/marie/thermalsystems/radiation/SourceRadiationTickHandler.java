@@ -48,10 +48,18 @@ import java.util.concurrent.ConcurrentHashMap;
  * so one config knob keeps both paths comparably sensitive without this
  * handler reimplementing the zone's stateful convergence simulation.
  *
- * <p>A player with no tracked source within radius is skipped entirely -
- * no bridge call is made for them - so this never overwrites whatever
- * zone-ambient temperature {@code PlayerTemperatureBridgeHandler} already
- * delivered for a player outside all radiation range.
+ * <p>Every online player gets a bridge call every interval, even one with
+ * no tracked source within radius - that call just carries a net radiated
+ * rate of 0 (so {@code radiatedTemperature} collapses to
+ * {@code defaultAmbientTemperature}). Bridges have no dedicated "remove my
+ * contribution" call, so skipping the call entirely when a player walks out
+ * of range would leave that player's last nonzero contribution stuck
+ * permanently under this handler's {@code sourceId} - sending 0 is how a
+ * contribution actually clears. This can't reintroduce the zone-vs-radiation
+ * collision the fixed-UUID/{@code sourceId} system was built to prevent:
+ * this handler and {@code PlayerTemperatureBridgeHandler} already use
+ * distinct, fixed {@code sourceId}s (see {@link #SOURCE_ID} below), so
+ * zeroing this handler's contribution never touches the other's.
  */
 @EventBusSubscriber(modid = ThermalSystemsMod.MOD_ID)
 public final class SourceRadiationTickHandler {
@@ -103,9 +111,6 @@ public final class SourceRadiationTickHandler {
         for (ServerLevel level : event.getServer().getAllLevels()) {
             Set<BlockPos> positions = ActiveSourcePositions.getAll(level);
             logIfPositionsEmptyChanged(level, positions.isEmpty());
-            if (positions.isEmpty()) {
-                continue;
-            }
             for (ServerPlayer player : level.players()) {
                 radiateTo(level, player, positions, radius, bridges);
             }
@@ -140,12 +145,7 @@ public final class SourceRadiationTickHandler {
         }
 
         if (!anyInRange) {
-            Double previous = LAST_RADIATED.remove(player.getUUID());
-            if (previous != null && ThermalConfig.LOGGING_ENABLED.get() && ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
-                LOGGER.info("[MTS] Player={} no longer has a tracked source within radiation radius (was {})",
-                        player.getGameProfile().getName(), previous);
-            }
-            return;
+            logIfNoLongerInRange(player);
         }
 
         double radiatedTemperature = ThermalConfig.DEFAULT_AMBIENT_TEMPERATURE.get()
@@ -171,6 +171,20 @@ public final class SourceRadiationTickHandler {
         if (previous == null || previous.booleanValue() != empty) {
             LOGGER.info("[MTS] ActiveSourcePositions for dim={} is now {}",
                     level.dimension().location(), empty ? "empty (no tracked sources)" : "non-empty");
+        }
+    }
+
+    /**
+     * Logs the transition when a player's last tracked source falls out of
+     * radiation range - purely diagnostic. The bridge call still goes out
+     * with a net rate of 0 either way (see the class Javadoc); this only
+     * controls whether a line gets logged about it.
+     */
+    private static void logIfNoLongerInRange(ServerPlayer player) {
+        Double previous = LAST_RADIATED.remove(player.getUUID());
+        if (previous != null && ThermalConfig.LOGGING_ENABLED.get() && ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
+            LOGGER.info("[MTS] Player={} no longer has a tracked source within radiation radius (was {})",
+                    player.getGameProfile().getName(), previous);
         }
     }
 

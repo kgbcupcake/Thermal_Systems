@@ -11,6 +11,7 @@
   "config.thermalsystems.category.mekanism": "Mekanism",
   "config.thermalsystems.category.enderio": "Ender IO",
   "config.thermalsystems.category.lso": "LSO",
+  "config.thermalsystems.category.coldsweat": "Cold Sweat",
 
   "config.thermalsystems.simulationTickInterval": "Simulation Tick Interval",
   "config.thermalsystems.simulationTickInterval.desc": "Ticks between simulation updates.",
@@ -41,6 +42,8 @@
   "config.thermalsystems.sourceRadiationRadius.desc": "Chebyshev-distance blocks a tracked heat/cooling source radiates directly to nearby players, independent of any zone.",
   "config.thermalsystems.sourceRadiationInterval": "Source Radiation Interval",
   "config.thermalsystems.sourceRadiationInterval.desc": "Ticks between direct source-to-player radiation applications.",
+  "config.thermalsystems.sourceTrackingReverifyInterval": "Source Tracking Reverify Interval",
+  "config.thermalsystems.sourceTrackingReverifyInterval.desc": "Ticks between periodic re-verification passes that re-check tracked source positions still resolve to the expected block type, independent of chunk load/unload event timing.",
   "config.thermalsystems.hoverTooltipsEnabled": "Hover Tooltips Enabled",
   "config.thermalsystems.hoverTooltipsEnabled.desc": "Gates the integration network hover tooltips (Ender IO, Mekanism, PneumaticCraft).",
 
@@ -65,6 +68,13 @@
 
   "config.thermalsystems.lsoTemperatureOffset": "Neutral Temperature Offset",
   "config.thermalsystems.lsoTemperatureOffset.desc": "Ambient temperature, in Celsius, treated as Legendary Survival Overhaul's zero-delta neutral point. Matches TemperatureEnum.NORMAL's center by default.",
+
+  "config.thermalsystems.coldsweatEnabled": "Enabled",
+  "config.thermalsystems.coldsweatEnabled.desc": "Config-level on/off switch for the Cold Sweat integration. Separate from whether Cold Sweat is actually installed - both must be true for the integration to activate.",
+  "config.thermalsystems.coldsweatTemperatureOffset": "Neutral Temperature Offset",
+  "config.thermalsystems.coldsweatTemperatureOffset.desc": "Ambient temperature, in Celsius, treated as Cold Sweat's zero-delta neutral point. Matches Default Ambient Temperature by default.",
+  "config.thermalsystems.coldsweatOutputScale": "Output Scale",
+  "config.thermalsystems.coldsweatOutputScale.desc": "Scales the Celsius delta from the neutral point into the small int strength Cold Sweat's WarmthTempModifier/FrigidnessTempModifier expect. A strength of 1 is already a strong effect against Cold Sweat's comfortable range, so this stays small - the default keeps a 10C delta at roughly strength 1.",
 
   "config.thermalsystems.importExport.export.title": "Export Thermal Systems Config",
   "config.thermalsystems.importExport.export.toFile": "Export to File",

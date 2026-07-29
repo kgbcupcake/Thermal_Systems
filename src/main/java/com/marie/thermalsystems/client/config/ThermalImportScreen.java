@@ -2,6 +2,7 @@ package com.marie.thermalsystems.client.config;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.marie.thermalsystems.data.config.ThermalConfig;
 import dev.marie.framework.client.config.importexport.ImportExportManager;
 import dev.marie.framework.client.config.importexport.ImportExportToast;
 import net.minecraft.client.gui.GuiGraphics;
@@ -125,6 +126,10 @@ public final class ThermalImportScreen extends Screen {
         }
         try {
             ThermalConfigIO.applyRoot(pendingRoot);
+            // applyRoot only updates in-memory ModConfigSpec.ConfigValues (see
+            // ThermalSystemsConfigScreen's setSavingRunnable comment) - save explicitly
+            // here too, since nothing else in this screen's flow ever will.
+            ThermalConfig.SPEC.save();
             status = Component.translatable(configKey("importExport.import.applied"));
             ImportExportToast.show(Component.translatable(configKey("importExport.import.applied")));
         } catch (Exception e) {

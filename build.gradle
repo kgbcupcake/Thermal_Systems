@@ -27,8 +27,9 @@ repositories {
         url = "https://maven.architectury.dev/"
     }
     maven {
-        // Hosts Legendary Survival Overhaul, which isn't mirrored on ModMaven.
-        // See integration/lso/LSOIntegration.java.
+        // Hosts Legendary Survival Overhaul and Cold Sweat, neither of which is mirrored on
+        // ModMaven. See integration/lso/LSOIntegration.java and
+        // integration/coldsweat/ColdSweatIntegration.java.
         name = "Modrinth"
         url = "https://api.modrinth.com/maven"
     }
@@ -105,6 +106,10 @@ dependencies {
     // See integration/lso/LSOIntegration.java.
     compileOnly "maven.modrinth:legendary-survival-overhaul:${lso_version}"
 
+    // Compile-time only: Cold Sweat integration must remain optional at runtime.
+    // See integration/coldsweat/ColdSweatIntegration.java.
+    compileOnly "maven.modrinth:cold-sweat:${cold_sweat_version}"
+
     // Test-scoped only, mirroring the dependencies above: capability-registration
     // tests use stub implementations of the target mods' public API interfaces, which
     // requires these interfaces on the test runtime classpath too (unlike the compileOnly
@@ -113,6 +118,7 @@ dependencies {
     testImplementation "me.desht.pneumaticcraft:pneumaticcraft-repressurized:${pneumaticcraft_version}"
     testImplementation "mekanism:Mekanism:${mekanism_version}:api"
     testImplementation "maven.modrinth:legendary-survival-overhaul:${lso_version}"
+    testImplementation "maven.modrinth:cold-sweat:${cold_sweat_version}"
 
     testImplementation platform('org.junit:junit-bom:5.10.2')
     testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -138,6 +144,7 @@ tasks.named('processResources', ProcessResources).configure {
         mekanism_version_range : mekanism_version_range,
         enderio_version_range  : enderio_version_range,
         lso_version_range      : lso_version_range,
+        cold_sweat_version_range: cold_sweat_version_range,
         maries_framework_version_range: maries_framework_version_range,
         mod_id                 : mod_id,
         mod_name               : mod_name,

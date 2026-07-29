@@ -1,5 +1,6 @@
 package com.marie.thermalsystems.client.config;
 
+import com.marie.thermalsystems.client.config.categories.ColdSweatCategory;
 import com.marie.thermalsystems.client.config.categories.EnderIOCategory;
 import com.marie.thermalsystems.client.config.categories.IntegrationCategory;
 import com.marie.thermalsystems.client.config.categories.LSOCategory;
@@ -7,6 +8,7 @@ import com.marie.thermalsystems.client.config.categories.MekanismCategory;
 import com.marie.thermalsystems.client.config.categories.PneumaticCraftCategory;
 import com.marie.thermalsystems.client.config.categories.PresetsCategory;
 import com.marie.thermalsystems.client.config.categories.SimulationCategory;
+import com.marie.thermalsystems.data.config.ThermalConfig;
 import me.shedaniel.clothconfig2.api.ConfigBuilder;
 import me.shedaniel.clothconfig2.api.ConfigEntryBuilder;
 import net.minecraft.client.gui.screens.Screen;
@@ -41,9 +43,19 @@ public final class ThermalSystemsConfigScreen {
         MekanismCategory.addMekanismCategory(builder, entryBuilder);
         PneumaticCraftCategory.addPneumaticCraftCategory(builder, entryBuilder);
         LSOCategory.addLSOCategory(builder, entryBuilder);
+        ColdSweatCategory.addColdSweatCategory(builder, entryBuilder);
 
         builder.setAlwaysShowTabs(true);
         builder.setAfterInitConsumer(ThermalConfigSidebarLayout::apply);
+
+        // Each entry's setSaveConsumer(ThermalConfig.X::set) only updates the in-memory
+        // ModConfigSpec.ConfigValue - per NeoForge's own ConfigValue#set javadoc, it sets
+        // "without firing events or writing the config to disk". Cloth's Save & Quit button
+        // (ClothConfigScreen's saveAll()) calls entry.save() for that part, then separately
+        // runs whatever's registered here as the savingRunnable - without this, values only
+        // ever live in memory and silently reset to the on-disk TOML on next launch.
+        builder.setSavingRunnable(ThermalConfig.SPEC::save);
+
         return builder.build();
     }
 }
