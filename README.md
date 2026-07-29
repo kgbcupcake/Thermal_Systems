@@ -24,25 +24,26 @@ Thermal Systems simulates temperature as a first-class mechanic. Chunk-bound **c
 
 ## ✨ Features
 
-- **🧊 Zone-based climate simulation** — chunk-scoped zones converge toward a target temperature at a configurable rate, driven by an `IClimateZone` / `ClimateEngine` model.
-- **🔥 Pluggable heat & cooling sources** — `IHeatSource` / `ICoolingSource` capabilities let any block or system radiate into a zone; radiation is tracked per-tick with lifecycle-safe active-source bookkeeping.
-- **🖥️ Persistent HUD control panel** — an in-game overlay (toggleable via keybind) showing live system status, with a client config screen supporting export/import.
+- **🧊 Zone-based climate simulation**: chunk-scoped zones converge toward a target temperature at a configurable rate, driven by an `IClimateZone` / `ClimateEngine` model.
+- **🔥 Pluggable heat & cooling sources**: `IHeatSource` / `ICoolingSource` capabilities let any block or system radiate into a zone; radiation is tracked per-tick with lifecycle-safe active-source bookkeeping.
+- **🖥️ Persistent HUD control panel**:  an in-game overlay (toggleable via keybind) showing live system status, with a client config screen supporting export/import.
 - **🌐 Deep mod integrations**
-  - **PneumaticCraft** — heat sources from PneumaticCraft tubes/blocks with in-world hover info.
-  - **Mekanism** — heat conversion, network discovery, and hover providers for Mekanism heat networks.
-  - **Ender IO** — bidirectional heat/cool toggle blocks with networking, mode request/response payloads, and persisted UI state.
-  - **Legendary Survival Overhaul (LSO)** — thermal bridge syncing zone temperature to LSO's survival systems.
-  - **Cold Sweat** — thermal bridge syncing zone temperature to Cold Sweat's body temperature system.
-- **👤 Player temperature bridge** — reports each player's ambient zone temperature out to whichever survival mod is listening.
-- **⚙️ Fully configurable** — tick intervals, heat transfer coefficients, convergence rates, temperature clamps, and granular per-system logging toggles, all editable in-game via the config screen.
+  - **PneumaticCraft**: heat sources from PneumaticCraft tubes/blocks with in-world hover info.
+  - **Mekanism**: heat conversion, network discovery, and hover providers for Mekanism heat networks.
+  - **Ender IO**:  bidirectional heat/cool toggle blocks with networking, mode request/response payloads, and persisted UI state.
+  - **Legendary Survival Overhaul (LSO)**: thermal bridge syncing zone temperature to LSO's survival systems.
+  - **Cold Sweat**:  thermal bridge syncing zone temperature to Cold Sweat's body temperature system.
+- **👤 Player temperature bridge**: reports each player's ambient zone temperature out to whichever survival mod is listening.
+- **⚙️ Fully configurable**: tick intervals, heat transfer coefficients, convergence rates, temperature clamps, and granular per-system logging toggles, all editable in-game via the config screen.
 
 ## 📦 Requirements
 
 | Dependency | Version | Required |
-|---|---|---|
+| --- | --- | --- |
 | Minecraft | 1.21.1 | ✅ |
 | NeoForge | 21.1.235+ | ✅ |
 | [MariesLib](https://github.com/kgbcupcake/MariesLib) | 0.1.1-beta.4+ | ✅ |
+| [Cloth Config API](https://www.curseforge.com/minecraft/mc-mods/cloth-config) | 15.0.140+ | ✅ |
 | PneumaticCraft | 8.2.20+ | Optional |
 | Mekanism | 10.7.16.82+ | Optional |
 | Ender IO | 8.2.11-beta+ | Optional |

@@ -11,6 +11,10 @@ adheres to the version in [`gradle.properties`](gradle.properties).
 
 ## [Unreleased]
 
+### Added
+- README, CHANGELOG, and CLAUDE.md project documentation, including Cloth Config API in the
+  requirements list as a required runtime dependency for the client config screen.
+
 ## [0.0.1-beta] - 2026-07-29
 
 ### Added
