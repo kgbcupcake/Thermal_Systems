@@ -3,7 +3,6 @@ package com.marie.thermalsystems.integration.coldsweat;
 import com.marie.thermalsystems.api.bridge.ITemperatureBridge;
 import com.marie.thermalsystems.data.config.ThermalConfig;
 import com.momosoftworks.coldsweat.api.temperature.modifier.FrigidnessTempModifier;
-import com.momosoftworks.coldsweat.api.temperature.modifier.TempModifier;
 import com.momosoftworks.coldsweat.api.temperature.modifier.WarmthTempModifier;
 import com.momosoftworks.coldsweat.api.util.Temperature;
 import com.momosoftworks.coldsweat.api.util.placement.Matcher;
@@ -15,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Bridges Thermal Systems' resolved per-player ambient temperature into Cold
@@ -63,6 +63,17 @@ public final class ColdSweatThermalBridge implements ITemperatureBridge {
 
     private static final Map<UUID, Map<UUID, int[]>> CONTRIBUTIONS = new ConcurrentHashMap<>();
 
+    /**
+     * Last delta logged per {@code sourceId} - see {@link ITemperatureBridge}'s
+     * Javadoc on why each caller's contribution must be tracked independently.
+     * {@code PlayerTemperatureBridgeHandler} and {@code SourceRadiationTickHandler}
+     * both call this bridge every interval regardless of whether their delivered
+     * value changed, so without this check every interval would log a line per
+     * caller forever. The modifiers are still applied on every call; only the
+     * log line is gated.
+     */
+    private static final Map<UUID, Double> LAST_LOGGED_DELTA = new ConcurrentHashMap<>();
+
     @Override
     public void applyAmbientTemperature(ServerPlayer player, double ambientTemperatureCelsius, UUID sourceId) {
         double delta = ambientTemperatureCelsius - ThermalConfig.COLDSWEAT_TEMPERATURE_OFFSET.get();
@@ -86,8 +97,11 @@ public final class ColdSweatThermalBridge implements ITemperatureBridge {
         }
 
         if (ThermalConfig.LOGGING_ENABLED.get()) {
-            LOGGER.info("[MTS] ColdSweatThermalBridge.applyAmbientTemperature player={} ambientC={} delta={} sourceId={} totalWarming={} totalCooling={}",
-                    player.getGameProfile().getName(), ambientTemperatureCelsius, delta, sourceId, totalWarming, totalCooling);
+            Double previous = LAST_LOGGED_DELTA.put(sourceId, delta);
+            if (previous == null || previous.doubleValue() != delta) {
+                LOGGER.info("[MTS] ColdSweatThermalBridge.applyAmbientTemperature player={} ambientC={} delta={} sourceId={} totalWarming={} totalCooling={}",
+                        player.getGameProfile().getName(), ambientTemperatureCelsius, delta, sourceId, totalWarming, totalCooling);
+            }
         }
 
         applyWarmth(player, totalWarming);
@@ -98,27 +112,30 @@ public final class ColdSweatThermalBridge implements ITemperatureBridge {
         CONTRIBUTIONS.remove(playerId);
     }
 
+    private static final AtomicBoolean WARMTH_WARNED_ONCE = new AtomicBoolean(false);
+    private static final AtomicBoolean FRIGIDNESS_WARNED_ONCE = new AtomicBoolean(false);
+
     private static void applyWarmth(ServerPlayer player, int warming) {
-        for (TempModifier modifier : Temperature.getModifiers(player, Temperature.Trait.WORLD)) {
-            if (modifier instanceof WarmthTempModifier) {
-                modifier.getNBT().putInt("Warming", warming);
-                Temperature.updateModifiers(player);
-                return;
+        try {
+            Temperature.addModifier(player, new WarmthTempModifier(warming), Temperature.Trait.WORLD,
+                    Placement.LAST.noDuplicates(Matcher.SAME_CLASS));
+        } catch (Exception e) {
+            if (ThermalConfig.LOGGING_ENABLED.get() || WARMTH_WARNED_ONCE.compareAndSet(false, true)) {
+                LOGGER.warn("[MTS] ColdSweatThermalBridge.applyWarmth caught exception from Cold Sweat for player={}",
+                        player.getGameProfile().getName(), e);
             }
         }
-        Temperature.addModifier(player, new WarmthTempModifier(warming), Temperature.Trait.WORLD,
-                Placement.LAST.noDuplicates(Matcher.SAME_CLASS));
     }
 
     private static void applyFrigidness(ServerPlayer player, int cooling) {
-        for (TempModifier modifier : Temperature.getModifiers(player, Temperature.Trait.WORLD)) {
-            if (modifier instanceof FrigidnessTempModifier) {
-                modifier.getNBT().putInt("Cooling", cooling);
-                Temperature.updateModifiers(player);
-                return;
+        try {
+            Temperature.addModifier(player, new FrigidnessTempModifier(cooling), Temperature.Trait.WORLD,
+                    Placement.LAST.noDuplicates(Matcher.SAME_CLASS));
+        } catch (Exception e) {
+            if (ThermalConfig.LOGGING_ENABLED.get() || FRIGIDNESS_WARNED_ONCE.compareAndSet(false, true)) {
+                LOGGER.warn("[MTS] ColdSweatThermalBridge.applyFrigidness caught exception from Cold Sweat for player={}",
+                        player.getGameProfile().getName(), e);
             }
         }
-        Temperature.addModifier(player, new FrigidnessTempModifier(cooling), Temperature.Trait.WORLD,
-                Placement.LAST.noDuplicates(Matcher.SAME_CLASS));
     }
 }

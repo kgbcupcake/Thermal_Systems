@@ -1,5 +1,7 @@
 package com.marie.thermalsystems.integration.enderio;
 
+import com.mojang.serialization.Codec;
+
 /**
  * Whether an Ender IO Stirling Generator adapter currently feeds a zone's
  * heat or cooling side. Mutually exclusive by design, unlike Mekanism's
@@ -7,5 +9,7 @@ package com.marie.thermalsystems.integration.enderio;
  */
 enum ThermalMode {
     HEAT,
-    COOL
+    COOL;
+
+    static final Codec<ThermalMode> CODEC = Codec.STRING.xmap(ThermalMode::valueOf, Enum::name);
 }

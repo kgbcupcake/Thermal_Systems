@@ -65,6 +65,18 @@ final class MekanismNetworkPosition implements IHeatSource, ICoolingSource {
         return resolve().coolingSum();
     }
 
+    /**
+     * Resolves the {@code IHeatSource}/{@code ICoolingSource} diamond -
+     * explicitly {@code null} for now, same as each interface's own default.
+     * Unlike {@code EnderIONetworkPosition}, this class does not yet expose a
+     * real network id for direct-radiation dedup; Mekanism network-based
+     * radiation parity is a separate future pass.
+     */
+    @Override
+    public Object getNetworkId() {
+        return null;
+    }
+
     private CacheEntry resolve() {
         Map<BlockPos, CacheEntry> levelCache = CACHE.computeIfAbsent(level.dimension(), key -> new ConcurrentHashMap<>());
         long now = level.getGameTime();

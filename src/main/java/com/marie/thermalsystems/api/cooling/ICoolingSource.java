@@ -12,4 +12,13 @@ public interface ICoolingSource {
      * returning a constant.
      */
     double getCoolingOutput();
+
+    /**
+     * Identifies the network this source's cooling is attributed to, if any.
+     * See {@link com.marie.thermalsystems.api.heating.IHeatSource#getNetworkId()}
+     * for the full contract - same rule, mirrored for cooling.
+     */
+    default Object getNetworkId() {
+        return null;
+    }
 }

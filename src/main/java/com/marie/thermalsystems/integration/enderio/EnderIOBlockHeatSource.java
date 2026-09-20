@@ -5,6 +5,7 @@ import com.marie.thermalsystems.api.heating.IHeatSource;
 import com.marie.thermalsystems.data.config.ThermalConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.energy.IEnergyStorage;
 
@@ -22,7 +23,7 @@ import net.neoforged.neoforge.energy.IEnergyStorage;
  * <p>Unlike Mekanism's temperature-delta split, the generator's converted
  * output has no natural heat/cool sign of its own - it only ever produces
  * energy - so the split here is mode-gated instead, via
- * {@link EnderIOAdapterModeRegistry}: the converted value flows to
+ * {@link EnderIOThermalModeAttachment}: the converted value flows to
  * {@link #getHeatOutput()} in {@link ThermalMode#HEAT} and to
  * {@link #getCoolingOutput()} in {@link ThermalMode#COOL}, never both at
  * once.
@@ -39,12 +40,33 @@ final class EnderIOBlockHeatSource implements IHeatSource, ICoolingSource {
 
     @Override
     public double getHeatOutput() {
-        return EnderIOAdapterModeRegistry.get(level, pos) == ThermalMode.HEAT ? convert() : 0.0;
+        return currentMode() == ThermalMode.HEAT ? convert() : 0.0;
     }
 
     @Override
     public double getCoolingOutput() {
-        return EnderIOAdapterModeRegistry.get(level, pos) == ThermalMode.COOL ? convert() : 0.0;
+        return currentMode() == ThermalMode.COOL ? convert() : 0.0;
+    }
+
+    /**
+     * Resolves the {@link IHeatSource}/{@link ICoolingSource} diamond for
+     * this single-machine adapter, which has no network of its own -
+     * explicitly {@code null}, same as each interface's own default. Only
+     * ever queried directly (e.g. Jade tooltips on the generator itself);
+     * {@link ActiveSourcePositions} no longer tracks the generator's own
+     * position for direct radiation - see {@link EnderIOIntegration#onChunkLoad}.
+     */
+    @Override
+    public Object getNetworkId() {
+        return null;
+    }
+
+    private ThermalMode currentMode() {
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        if (blockEntity == null) {
+            return ThermalMode.HEAT;
+        }
+        return EnderIOThermalModeAttachment.get(blockEntity);
     }
 
     private double convert() {

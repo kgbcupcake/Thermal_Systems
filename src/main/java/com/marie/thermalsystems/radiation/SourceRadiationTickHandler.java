@@ -20,6 +20,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,8 +33,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * online player within {@code sourceRadiationRadius} blocks (Chebyshev
  * distance), summing {@code getHeatOutput()}/{@code getCoolingOutput()} via
  * the same {@link HeatSourceCapabilities}/{@link CoolingSourceCapabilities}
- * lookups every other integration uses, and delivering the result through
- * the same {@link ITemperatureBridge} mechanism
+ * lookups every other integration uses - deduped per
+ * {@link IHeatSource#getNetworkId()}/{@link ICoolingSource#getNetworkId()} so
+ * a single network contributes its output only once no matter how many of
+ * its in-range positions get summed, see {@link #radiateTo} - and delivering
+ * the result through the same {@link ITemperatureBridge} mechanism
  * {@code PlayerTemperatureBridgeHandler} uses for zone-ambient temperature -
  * just a different number feeding the same bridge call. Written generically
  * against {@link IHeatSource}/{@link ICoolingSource}; knows nothing about
@@ -132,10 +136,21 @@ public final class SourceRadiationTickHandler {
         LAST_POSITIONS_EMPTY.clear();
     }
 
+    /**
+     * Sums each in-range position's heat/cooling, but only once per distinct
+     * {@link IHeatSource#getNetworkId()}/{@link ICoolingSource#getNetworkId()}
+     * - several in-range positions sharing a network id (e.g. multiple
+     * segments of the same Ender IO conduit network) contribute that
+     * network's output exactly once, no matter how many of its positions are
+     * in range. A {@code null} network id (the default for sources with no
+     * network of their own) falls back to deduping by the position itself,
+     * preserving today's per-position behavior for non-networked sources.
+     */
     private static void radiateTo(ServerLevel level, ServerPlayer player, Set<BlockPos> positions, int radius,
                                    List<ITemperatureBridge> bridges) {
         BlockPos playerPos = player.blockPosition();
-        double net = 0.0;
+        Map<Object, Double> heatByNetwork = new LinkedHashMap<>();
+        Map<Object, Double> coolingByNetwork = new LinkedHashMap<>();
         boolean anyInRange = false;
         for (BlockPos pos : positions) {
             if (chebyshevDistance(playerPos, pos) > radius) {
@@ -144,11 +159,13 @@ public final class SourceRadiationTickHandler {
             anyInRange = true;
             IHeatSource heatSource = HeatSourceCapabilities.HEAT_SOURCE.getCapability(level, pos, null, null, null);
             if (heatSource != null) {
-                net += heatSource.getHeatOutput();
+                Object key = heatSource.getNetworkId();
+                heatByNetwork.putIfAbsent(key != null ? key : pos, heatSource.getHeatOutput());
             }
             ICoolingSource coolingSource = CoolingSourceCapabilities.COOLING_SOURCE.getCapability(level, pos, null, null, null);
             if (coolingSource != null) {
-                net -= coolingSource.getCoolingOutput();
+                Object key = coolingSource.getNetworkId();
+                coolingByNetwork.putIfAbsent(key != null ? key : pos, coolingSource.getCoolingOutput());
             }
         }
 
@@ -156,12 +173,15 @@ public final class SourceRadiationTickHandler {
             logIfNoLongerInRange(player);
         }
 
+        double net = heatByNetwork.values().stream().mapToDouble(Double::doubleValue).sum()
+                - coolingByNetwork.values().stream().mapToDouble(Double::doubleValue).sum();
+
         double radiatedTemperature = ThermalConfig.DEFAULT_AMBIENT_TEMPERATURE.get()
                 + ThermalConfig.HEAT_TRANSFER_COEFFICIENT.get() * net;
         for (ITemperatureBridge bridge : bridges) {
             bridge.applyAmbientTemperature(player, radiatedTemperature, SOURCE_ID);
         }
-        logIfChanged(player, radiatedTemperature);
+        logIfChanged(player, radiatedTemperature, heatByNetwork.keySet(), coolingByNetwork.keySet());
     }
 
     /**
@@ -213,14 +233,22 @@ public final class SourceRadiationTickHandler {
         return Math.max(Math.max(Math.abs(a.getX() - b.getX()), Math.abs(a.getY() - b.getY())), Math.abs(a.getZ() - b.getZ()));
     }
 
-    private static void logIfChanged(ServerPlayer player, double radiatedTemperature) {
+    /**
+     * @param heatNetworks    the distinct heat network ids (or, for a
+     *                        network-less source, its own position) that
+     *                        contributed to this tick's sum - see
+     *                        {@link #radiateTo}'s Javadoc
+     * @param coolingNetworks mirror of {@code heatNetworks} for cooling
+     */
+    private static void logIfChanged(ServerPlayer player, double radiatedTemperature,
+                                      Set<Object> heatNetworks, Set<Object> coolingNetworks) {
         if (!ThermalConfig.LOGGING_ENABLED.get() || !ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
             return;
         }
         Double previous = LAST_RADIATED.put(player.getUUID(), radiatedTemperature);
         if (previous == null || previous.doubleValue() != radiatedTemperature) {
-            LOGGER.info("[MTS] Player={} direct-radiation temperature changed to {}",
-                    player.getGameProfile().getName(), radiatedTemperature);
+            LOGGER.info("[MTS] Player={} direct-radiation temperature changed to {} (heatNetworks={}, coolingNetworks={})",
+                    player.getGameProfile().getName(), radiatedTemperature, heatNetworks, coolingNetworks);
         }
     }
 }

@@ -15,6 +15,26 @@ adheres to the version in [`gradle.properties`](gradle.properties).
 - README, CHANGELOG, and CLAUDE.md project documentation, including Cloth Config API in the
   requirements list as a required runtime dependency for the client config screen.
 
+### Fixed
+- Ender IO Stirling Generator heat/cool mode now persists across server restarts, stored as a data
+  attachment on the generator's own block entity instead of an in-memory registry that silently
+  reset every generator to heating on restart.
+- Cold Sweat thermal bridge no longer crashes the server tick loop when Cold Sweat's own
+  modifier-update internals throw; it now always re-adds modifiers through Cold Sweat's
+  deduplicating API instead of mutating them manually, and catches (and logs) any exception from
+  Cold Sweat rather than letting it propagate.
+- Cold Sweat and LSO thermal bridges no longer spam the log every interval; they now log only when
+  the delivered value actually changes for a given caller, matching the direct-radiation handler's
+  existing behavior. The temperature effect itself is still applied on every call.
+- Ender IO integration no longer logs a line for every chunk unload in the world regardless of
+  logging settings; that diagnostic log is now gated behind `LOGGING_ENABLED`/
+  `RADIATION_LOGGING_ENABLED` like the rest of the module's logging.
+- Direct radiation now warms/cools players standing near an Ender IO conduit fed by a generator
+  outside `sourceRadiationRadius`, instead of only near the generator itself. Direct-radiation
+  tracking follows conduit positions rather than the generator, and sums each distinct conduit
+  network's heat/cooling exactly once even when several of its segments are simultaneously in
+  range, instead of double-counting the network total once per nearby segment.
+
 ## [0.0.1-beta] - 2026-07-29
 
 ### Added

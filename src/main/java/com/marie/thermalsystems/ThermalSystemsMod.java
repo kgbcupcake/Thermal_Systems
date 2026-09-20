@@ -7,6 +7,7 @@ import com.marie.thermalsystems.hover.ThermalHoverProvider;
 import com.marie.thermalsystems.hud.ThermalSystemsHud;
 import com.marie.thermalsystems.integration.coldsweat.ColdSweatIntegration;
 import com.marie.thermalsystems.integration.enderio.EnderIOIntegration;
+import com.marie.thermalsystems.integration.enderio.EnderIOThermalModeAttachment;
 import com.marie.thermalsystems.integration.lso.LSOIntegration;
 import com.marie.thermalsystems.integration.mekanism.MekanismIntegration;
 import com.marie.thermalsystems.integration.pneumaticcraft.PneumaticCraftIntegration;
@@ -59,6 +60,7 @@ public class ThermalSystemsMod {
 
     public ThermalSystemsMod(IEventBus modEventBus, ModContainer modContainer) {
         MarieBootstrap.attachFrameworkServices(modEventBus);
+        EnderIOThermalModeAttachment.register(modEventBus);
         MarieAPI.registerBlockHoverProvider(new ThermalHoverProvider());
         ThermalContextRegistration.register(MOD_ID);
         ThermalSystemsHud.init(modEventBus);
