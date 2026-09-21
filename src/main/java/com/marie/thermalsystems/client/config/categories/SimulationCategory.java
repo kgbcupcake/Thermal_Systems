@@ -87,5 +87,22 @@ public final class SimulationCategory {
                         .setSaveConsumer(ThermalConfig.BINDING_LOGGING_ENABLED::set)
                         .build()
         );
+
+        category.addEntry(
+                eb.startBooleanToggle(Component.translatable("config.thermalsystems.radiationDebugEnabled"), ThermalConfig.RADIATION_DEBUG_ENABLED.get())
+                        .setDefaultValue(false)
+                        .setTooltip(Component.translatable("config.thermalsystems.radiationDebugEnabled.desc"))
+                        .setSaveConsumer(ThermalConfig.RADIATION_DEBUG_ENABLED::set)
+                        .build()
+        );
+
+        category.addEntry(
+                eb.startDoubleField(Component.translatable("config.thermalsystems.radiationChangeEpsilon"), ThermalConfig.RADIATION_CHANGE_EPSILON.get())
+                        .setDefaultValue(0.01)
+                        .setMin(0.0)
+                        .setTooltip(Component.translatable("config.thermalsystems.radiationChangeEpsilon.desc"))
+                        .setSaveConsumer(ThermalConfig.RADIATION_CHANGE_EPSILON::set)
+                        .build()
+        );
     }
 }

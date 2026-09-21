@@ -12,10 +12,25 @@ adheres to the version in [`gradle.properties`](gradle.properties).
 ## [Unreleased]
 
 ### Added
+- `/thermal debug radiation` (op only) now ships with the core mod and reports each player's applied
+  radiation temperature; new `radiationDebugEnabled` (default off) and `radiationChangeEpsilon`
+  options on the Simulation tab.
+- Optional Tough As Nails integration: heat and cooling from zones and nearby sources now shift a
+  player's Tough As Nails temperature by one or two levels once they cross configurable
+  thresholds, never pushing a player into Hot or Icy from outside it. Adds a Tough As Nails tab to
+  the config screen, and `/thermal debug radiation` (op only, available with Tough As Nails
+  installed) to show each player's stored value, step count, and Tough As Nails level before/after.
 - README, CHANGELOG, and CLAUDE.md project documentation, including Cloth Config API in the
   requirements list as a required runtime dependency for the client config screen.
 
 ### Fixed
+- Direct-radiation handler no longer logs "no longer has a tracked source" and "temperature changed"
+  every interval for an idle player with nothing nearby. Both now log only on a real transition (a
+  source leaving range, or the value moving more than the new `radiationChangeEpsilon`); per-player
+  state is reset on logout and dimension change. Bridge calls are unchanged.
+- Dedicated servers with Ender IO integration no longer reject clients with "channel missing on the
+  server side" for `thermalsystems:enderio_mode_response`; the response packet is now registered on
+  both sides while its handling stays client-only.
 - Ender IO Stirling Generator heat/cool mode now persists across server restarts, stored as a data
   attachment on the generator's own block entity instead of an in-memory registry that silently
   reset every generator to heating on restart.

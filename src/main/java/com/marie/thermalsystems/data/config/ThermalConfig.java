@@ -19,6 +19,8 @@ public final class ThermalConfig {
     public static final ModConfigSpec.BooleanValue LOGGING_ENABLED;
     public static final ModConfigSpec.BooleanValue RADIATION_LOGGING_ENABLED;
     public static final ModConfigSpec.BooleanValue BINDING_LOGGING_ENABLED;
+    public static final ModConfigSpec.BooleanValue RADIATION_DEBUG_ENABLED;
+    public static final ModConfigSpec.DoubleValue RADIATION_CHANGE_EPSILON;
 
     public static final ModConfigSpec.IntValue PLAYER_BRIDGE_INTERVAL;
     public static final ModConfigSpec.DoubleValue DEFAULT_AMBIENT_TEMPERATURE;
@@ -52,6 +54,12 @@ public final class ThermalConfig {
     public static final ModConfigSpec.BooleanValue COLDSWEAT_ENABLED;
     public static final ModConfigSpec.DoubleValue COLDSWEAT_TEMPERATURE_OFFSET;
     public static final ModConfigSpec.DoubleValue COLDSWEAT_OUTPUT_SCALE;
+
+    public static final ModConfigSpec.BooleanValue TOUGHASNAILS_ENABLED;
+    public static final ModConfigSpec.DoubleValue TOUGHASNAILS_HEAT_ONE_STEP_THRESHOLD;
+    public static final ModConfigSpec.DoubleValue TOUGHASNAILS_HEAT_TWO_STEP_THRESHOLD;
+    public static final ModConfigSpec.DoubleValue TOUGHASNAILS_COOLING_ONE_STEP_THRESHOLD;
+    public static final ModConfigSpec.DoubleValue TOUGHASNAILS_COOLING_TWO_STEP_THRESHOLD;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -103,6 +111,16 @@ public final class ThermalConfig {
                 .comment("Sub-flag gating ZoneSourceScanner/ZoneSourceBindingTickHandler logging. Only takes effect",
                         "when loggingEnabled is also true.")
                 .define("bindingLoggingEnabled", true);
+
+        RADIATION_DEBUG_ENABLED = builder
+                .comment("Emits SourceRadiationTickHandler's per-interval, per-player diagnostics at DEBUG level.",
+                        "Off by default; /thermal debug radiation reports the same state on demand without it.")
+                .define("radiationDebugEnabled", false);
+
+        RADIATION_CHANGE_EPSILON = builder
+                .comment("Smallest difference, in Celsius, between a player's direct-radiation temperature and the",
+                        "last one logged for them that counts as a change worth logging.")
+                .defineInRange("radiationChangeEpsilon", 0.01, 0.0, Double.MAX_VALUE);
 
         builder.pop();
 
@@ -240,6 +258,39 @@ public final class ThermalConfig {
                         "MIN_TEMP/MAX_TEMP comfortable range that only spans about 1.2 units - so a strength of 1 is",
                         "already a strong effect. The default here keeps a 10C delta at roughly strength 1.")
                 .defineInRange("outputScale", 0.1, 0.0, Double.MAX_VALUE);
+
+        builder.pop();
+
+        builder.push("toughasnails");
+
+        TOUGHASNAILS_ENABLED = builder
+                .comment("Config-level on/off switch for the Tough As Nails integration. Separate from whether Tough",
+                        "As Nails is actually installed - both must be true for the integration to activate. Turning",
+                        "it off after startup stops the modifier from changing anything, but a restart is needed to",
+                        "fully unregister it.")
+                .define("enabled", true);
+
+        TOUGHASNAILS_HEAT_ONE_STEP_THRESHOLD = builder
+                .comment("Degrees Celsius above defaultAmbientTemperature (summed across all sources affecting a",
+                        "player) at which Thermal Systems raises the player's Tough As Nails temperature by one level.")
+                .defineInRange("heatOneStepThreshold", 5.0, 0.0, Double.MAX_VALUE);
+
+        TOUGHASNAILS_HEAT_TWO_STEP_THRESHOLD = builder
+                .comment("Degrees Celsius above defaultAmbientTemperature at which Thermal Systems raises the",
+                        "player's Tough As Nails temperature by two levels. A player is never pushed into HOT from",
+                        "outside it - the result stops at WARM.")
+                .defineInRange("heatTwoStepThreshold", 15.0, 0.0, Double.MAX_VALUE);
+
+        TOUGHASNAILS_COOLING_ONE_STEP_THRESHOLD = builder
+                .comment("Degrees Celsius below defaultAmbientTemperature (given as a positive number) at which",
+                        "Thermal Systems lowers the player's Tough As Nails temperature by one level.")
+                .defineInRange("coolingOneStepThreshold", 5.0, 0.0, Double.MAX_VALUE);
+
+        TOUGHASNAILS_COOLING_TWO_STEP_THRESHOLD = builder
+                .comment("Degrees Celsius below defaultAmbientTemperature (given as a positive number) at which",
+                        "Thermal Systems lowers the player's Tough As Nails temperature by two levels. A player is",
+                        "never pushed into ICY from outside it - the result stops at COLD.")
+                .defineInRange("coolingTwoStepThreshold", 15.0, 0.0, Double.MAX_VALUE);
 
         builder.pop();
 

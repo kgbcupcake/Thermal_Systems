@@ -24,9 +24,7 @@ import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
-import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -130,7 +128,6 @@ public final class EnderIOClientIntegration {
     }
 
     public static void init(IEventBus modEventBus) {
-        modEventBus.addListener(RegisterPayloadHandlersEvent.class, EnderIOClientIntegration::onRegisterPayloadHandlers);
         modEventBus.addListener(RegisterKeyMappingsEvent.class, EnderIOKeys::onRegisterKeyMappings);
         ForeignScreenDetector.registerInterest(STIRLING_GENERATOR_MENU, EnderIOClientIntegration::onScreenOpened);
         NeoForge.EVENT_BUS.addListener(PlayerInteractEvent.RightClickBlock.class, EnderIOClientIntegration::onRightClickBlock);
@@ -143,24 +140,12 @@ public final class EnderIOClientIntegration {
     }
 
     /**
-     * Registers {@link EnderIOModeResponsePayload} (server-to-client only -
-     * the client-to-server request leg, {@link EnderIOModeRequestPayload},
-     * is registered separately by {@link EnderIOIntegration}, which is the
-     * only side that ever needs to receive it).
-     */
-    private static void onRegisterPayloadHandlers(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(ThermalSystemsMod.MOD_ID).versioned("1");
-        registrar.playToClient(EnderIOModeResponsePayload.TYPE, EnderIOModeResponsePayload.STREAM_CODEC,
-                EnderIOClientIntegration::onModeResponse);
-    }
-
-    /**
      * Applies a {@link EnderIOModeResponsePayload} to {@link #toggle} - but
      * only if it's still tracking the same position the response is for.
      * The player could otherwise have opened a different generator's screen
      * (or closed it) between the request going out and this reply arriving.
      */
-    private static void onModeResponse(EnderIOModeResponsePayload payload, IPayloadContext context) {
+    static void onModeResponse(EnderIOModeResponsePayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             HeatCoolToggleComponent current = toggle;
             if (current == null || !current.pos().equals(payload.pos())) {

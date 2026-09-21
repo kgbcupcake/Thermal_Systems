@@ -65,3 +65,10 @@ logoFile ="thermal_icon.png"
     versionRange = "${cold_sweat_version_range}"
     ordering = "NONE"
     side = "BOTH"
+
+[[dependencies.${mod_id}]]
+    modId = "toughasnails"
+    type = "optional"
+    versionRange = "${tough_as_nails_version_range}"
+    ordering = "NONE"
+    side = "BOTH"

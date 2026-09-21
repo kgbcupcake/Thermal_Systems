@@ -27,6 +27,8 @@ public final class ThermalConfigIO {
         simulation.addProperty("loggingEnabled", ThermalConfig.LOGGING_ENABLED.get());
         simulation.addProperty("radiationLoggingEnabled", ThermalConfig.RADIATION_LOGGING_ENABLED.get());
         simulation.addProperty("bindingLoggingEnabled", ThermalConfig.BINDING_LOGGING_ENABLED.get());
+        simulation.addProperty("radiationDebugEnabled", ThermalConfig.RADIATION_DEBUG_ENABLED.get());
+        simulation.addProperty("radiationChangeEpsilon", ThermalConfig.RADIATION_CHANGE_EPSILON.get());
         root.add("simulation", simulation);
 
         JsonObject integration = new JsonObject();
@@ -66,6 +68,13 @@ public final class ThermalConfigIO {
         coldsweat.addProperty("outputScale", ThermalConfig.COLDSWEAT_OUTPUT_SCALE.get());
         root.add("coldsweat", coldsweat);
 
+        JsonObject toughasnails = new JsonObject();
+        toughasnails.addProperty("heatOneStepThreshold", ThermalConfig.TOUGHASNAILS_HEAT_ONE_STEP_THRESHOLD.get());
+        toughasnails.addProperty("heatTwoStepThreshold", ThermalConfig.TOUGHASNAILS_HEAT_TWO_STEP_THRESHOLD.get());
+        toughasnails.addProperty("coolingOneStepThreshold", ThermalConfig.TOUGHASNAILS_COOLING_ONE_STEP_THRESHOLD.get());
+        toughasnails.addProperty("coolingTwoStepThreshold", ThermalConfig.TOUGHASNAILS_COOLING_TWO_STEP_THRESHOLD.get());
+        root.add("toughasnails", toughasnails);
+
         return root;
     }
 
@@ -80,6 +89,8 @@ public final class ThermalConfigIO {
             applyBoolean(s, "loggingEnabled", ThermalConfig.LOGGING_ENABLED);
             applyBoolean(s, "radiationLoggingEnabled", ThermalConfig.RADIATION_LOGGING_ENABLED);
             applyBoolean(s, "bindingLoggingEnabled", ThermalConfig.BINDING_LOGGING_ENABLED);
+            applyBoolean(s, "radiationDebugEnabled", ThermalConfig.RADIATION_DEBUG_ENABLED);
+            applyDouble(s, "radiationChangeEpsilon", ThermalConfig.RADIATION_CHANGE_EPSILON);
         });
         applySection(root, "integration", s -> {
             applyInt(s, "playerBridgeInterval", ThermalConfig.PLAYER_BRIDGE_INTERVAL);
@@ -110,6 +121,12 @@ public final class ThermalConfigIO {
         applySection(root, "coldsweat", s -> {
             applyDouble(s, "temperatureOffset", ThermalConfig.COLDSWEAT_TEMPERATURE_OFFSET);
             applyDouble(s, "outputScale", ThermalConfig.COLDSWEAT_OUTPUT_SCALE);
+        });
+        applySection(root, "toughasnails", s -> {
+            applyDouble(s, "heatOneStepThreshold", ThermalConfig.TOUGHASNAILS_HEAT_ONE_STEP_THRESHOLD);
+            applyDouble(s, "heatTwoStepThreshold", ThermalConfig.TOUGHASNAILS_HEAT_TWO_STEP_THRESHOLD);
+            applyDouble(s, "coolingOneStepThreshold", ThermalConfig.TOUGHASNAILS_COOLING_ONE_STEP_THRESHOLD);
+            applyDouble(s, "coolingTwoStepThreshold", ThermalConfig.TOUGHASNAILS_COOLING_TWO_STEP_THRESHOLD);
         });
     }
 

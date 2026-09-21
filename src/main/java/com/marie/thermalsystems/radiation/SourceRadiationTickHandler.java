@@ -1,6 +1,5 @@
 package com.marie.thermalsystems.radiation;
 
-import com.marie.thermalsystems.ThermalSystemsMod;
 import com.marie.thermalsystems.api.ThermalSystemsAPI;
 import com.marie.thermalsystems.api.bridge.ITemperatureBridge;
 import com.marie.thermalsystems.api.cooling.CoolingSourceCapabilities;
@@ -8,23 +7,29 @@ import com.marie.thermalsystems.api.cooling.ICoolingSource;
 import com.marie.thermalsystems.api.heating.HeatSourceCapabilities;
 import com.marie.thermalsystems.api.heating.IHeatSource;
 import com.marie.thermalsystems.data.config.ThermalConfig;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -65,7 +70,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * distinct, fixed {@code sourceId}s (see {@link #SOURCE_ID} below), so
  * zeroing this handler's contribution never touches the other's.
  */
-@EventBusSubscriber(modid = ThermalSystemsMod.MOD_ID)
 public final class SourceRadiationTickHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SourceRadiationTickHandler.class);
@@ -81,7 +85,26 @@ public final class SourceRadiationTickHandler {
      */
     private static final UUID SOURCE_ID = UUID.fromString("3d7a9c1e-4f6b-4e2a-8c5d-2b9f7a1e6d4c");
 
-    private static final Map<UUID, Double> LAST_RADIATED = new ConcurrentHashMap<>();
+    /**
+     * Instance state, not static: this handler is created once by
+     * {@link com.marie.thermalsystems.ThermalSystemsMod} and registered on the
+     * game bus. Every per-player map is cleared on logout and dimension
+     * change, and everything on server stop.
+     */
+
+    /** Most recent temperature handed to the bridges per player, updated every interval - read by the debug command. */
+    private final Map<UUID, Double> latestApplied = new ConcurrentHashMap<>();
+
+    /**
+     * Last temperature per player that was actually reported as a change. The
+     * change check compares against this, not against {@link #latestApplied},
+     * so a slow drift smaller than the epsilon per interval still surfaces
+     * once it accumulates past it.
+     */
+    private final Map<UUID, Double> lastReported = new ConcurrentHashMap<>();
+
+    /** Players whose previous interval had a tracked source within radiation radius. */
+    private final Set<UUID> hadSourceInRange = ConcurrentHashMap.newKeySet();
 
     /**
      * Tracks, per level, whether {@link ActiveSourcePositions#getAll} was
@@ -90,16 +113,24 @@ public final class SourceRadiationTickHandler {
      * shows up as a single logged transition instead of either total silence
      * or a log line every {@code sourceRadiationInterval} ticks forever.
      */
-    private static final Map<ResourceKey<Level>, Boolean> LAST_POSITIONS_EMPTY = new ConcurrentHashMap<>();
+    private final Map<ResourceKey<Level>, Boolean> lastPositionsEmpty = new ConcurrentHashMap<>();
 
-    private static int tickCounter = 0;
-    private static Boolean wasEnabled = null;
+    /** Extra per-player lines appended to {@code /thermal debug radiation} by optional integrations. */
+    private final List<Function<ServerPlayer, String>> debugLineProviders = new ArrayList<>();
 
-    private SourceRadiationTickHandler() {
+    private int tickCounter = 0;
+    private Boolean wasEnabled = null;
+
+    /**
+     * Lets an optional integration add one line per player to
+     * {@code /thermal debug radiation} without this handler knowing about it.
+     */
+    public void addDebugLineProvider(Function<ServerPlayer, String> provider) {
+        debugLineProviders.add(provider);
     }
 
     @SubscribeEvent
-    public static void onServerTick(ServerTickEvent.Post event) {
+    public void onServerTick(ServerTickEvent.Post event) {
         boolean enabled = ThermalConfig.SYSTEM_ENABLED.get();
         logIfEnabledChanged(enabled);
         if (!enabled) {
@@ -130,10 +161,64 @@ public final class SourceRadiationTickHandler {
     }
 
     @SubscribeEvent
-    public static void onServerStopping(ServerStoppingEvent event) {
+    public void onServerStopping(ServerStoppingEvent event) {
         ActiveSourcePositions.clear();
-        LAST_RADIATED.clear();
-        LAST_POSITIONS_EMPTY.clear();
+        latestApplied.clear();
+        lastReported.clear();
+        hadSourceInRange.clear();
+        lastPositionsEmpty.clear();
+    }
+
+    @SubscribeEvent
+    public void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        clearPlayer(event.getEntity().getUUID());
+    }
+
+    /**
+     * A dimension change starts a fresh comparison: the player's sources in
+     * the new level are unrelated to the old one's, so carrying the old
+     * state over would report a spurious "no longer has a tracked source".
+     */
+    @SubscribeEvent
+    public void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        clearPlayer(event.getEntity().getUUID());
+    }
+
+    private void clearPlayer(UUID playerId) {
+        latestApplied.remove(playerId);
+        lastReported.remove(playerId);
+        hadSourceInRange.remove(playerId);
+    }
+
+    @SubscribeEvent
+    public void onRegisterCommands(RegisterCommandsEvent event) {
+        event.getDispatcher().register(
+                Commands.literal("thermal")
+                        .then(Commands.literal("debug")
+                                .requires(source -> source.hasPermission(2))
+                                .then(Commands.literal("radiation")
+                                        .executes(context -> debugRadiation(context.getSource())))));
+    }
+
+    /**
+     * The only place this handler's per-player state is ever sent to chat, and
+     * only to whoever ran the command.
+     */
+    private int debugRadiation(CommandSourceStack source) {
+        int count = 0;
+        for (ServerPlayer player : source.getServer().getPlayerList().getPlayers()) {
+            Double applied = latestApplied.get(player.getUUID());
+            String line = "[radiation] " + player.getGameProfile().getName()
+                    + " applied=" + (applied != null ? applied + "C" : "n/a")
+                    + " sourceInRange=" + hadSourceInRange.contains(player.getUUID());
+            source.sendSuccess(() -> Component.literal(line), false);
+            for (Function<ServerPlayer, String> provider : debugLineProviders) {
+                String extra = provider.apply(player);
+                source.sendSuccess(() -> Component.literal(extra), false);
+            }
+            count++;
+        }
+        return count;
     }
 
     /**
@@ -146,7 +231,7 @@ public final class SourceRadiationTickHandler {
      * network of their own) falls back to deduping by the position itself,
      * preserving today's per-position behavior for non-networked sources.
      */
-    private static void radiateTo(ServerLevel level, ServerPlayer player, Set<BlockPos> positions, int radius,
+    private void radiateTo(ServerLevel level, ServerPlayer player, Set<BlockPos> positions, int radius,
                                    List<ITemperatureBridge> bridges) {
         BlockPos playerPos = player.blockPosition();
         Map<Object, Double> heatByNetwork = new LinkedHashMap<>();
@@ -169,10 +254,6 @@ public final class SourceRadiationTickHandler {
             }
         }
 
-        if (!anyInRange) {
-            logIfNoLongerInRange(player);
-        }
-
         double net = heatByNetwork.values().stream().mapToDouble(Double::doubleValue).sum()
                 - coolingByNetwork.values().stream().mapToDouble(Double::doubleValue).sum();
 
@@ -181,6 +262,8 @@ public final class SourceRadiationTickHandler {
         for (ITemperatureBridge bridge : bridges) {
             bridge.applyAmbientTemperature(player, radiatedTemperature, SOURCE_ID);
         }
+        latestApplied.put(player.getUUID(), radiatedTemperature);
+        logIfNoLongerInRange(player, anyInRange);
         logIfChanged(player, radiatedTemperature, heatByNetwork.keySet(), coolingByNetwork.keySet());
     }
 
@@ -191,11 +274,11 @@ public final class SourceRadiationTickHandler {
      * eviction - shows up as one clear log line instead of either total
      * silence or unbounded repetition.
      */
-    private static void logIfPositionsEmptyChanged(ServerLevel level, boolean empty) {
+    private void logIfPositionsEmptyChanged(ServerLevel level, boolean empty) {
         if (!ThermalConfig.LOGGING_ENABLED.get() || !ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
             return;
         }
-        Boolean previous = LAST_POSITIONS_EMPTY.put(level.dimension(), empty);
+        Boolean previous = lastPositionsEmpty.put(level.dimension(), empty);
         if (previous == null || previous.booleanValue() != empty) {
             LOGGER.info("[MTS] ActiveSourcePositions for dim={} is now {}",
                     level.dimension().location(), empty ? "empty (no tracked sources)" : "non-empty");
@@ -203,20 +286,21 @@ public final class SourceRadiationTickHandler {
     }
 
     /**
-     * Logs the transition when a player's last tracked source falls out of
-     * radiation range - purely diagnostic. The bridge call still goes out
-     * with a net rate of 0 either way (see the class Javadoc); this only
-     * controls whether a line gets logged about it.
+     * Updates whether this player has a tracked source in range, and logs
+     * only the in-range -&gt; out-of-range transition. The bridge call goes
+     * out with a net rate of 0 either way (see the class Javadoc); this only
+     * controls the log line. Runs unconditionally, so the state stays
+     * accurate for the debug command even with logging off.
      */
-    private static void logIfNoLongerInRange(ServerPlayer player) {
-        Double previous = LAST_RADIATED.remove(player.getUUID());
-        if (previous != null && ThermalConfig.LOGGING_ENABLED.get() && ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
-            LOGGER.info("[MTS] Player={} no longer has a tracked source within radiation radius (was {})",
-                    player.getGameProfile().getName(), previous);
+    private void logIfNoLongerInRange(ServerPlayer player, boolean inRange) {
+        boolean wasInRange = inRange ? !hadSourceInRange.add(player.getUUID()) : hadSourceInRange.remove(player.getUUID());
+        if (!inRange && wasInRange && ThermalConfig.LOGGING_ENABLED.get() && ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
+            LOGGER.info("[MTS] Player={} no longer has a tracked source within radiation radius",
+                    player.getGameProfile().getName());
         }
     }
 
-    private static void logIfEnabledChanged(boolean enabled) {
+    private void logIfEnabledChanged(boolean enabled) {
         Boolean previous = wasEnabled;
         wasEnabled = enabled;
         if (previous == null || previous.booleanValue() == enabled || !ThermalConfig.LOGGING_ENABLED.get()) {
@@ -240,13 +324,19 @@ public final class SourceRadiationTickHandler {
      *                        {@link #radiateTo}'s Javadoc
      * @param coolingNetworks mirror of {@code heatNetworks} for cooling
      */
-    private static void logIfChanged(ServerPlayer player, double radiatedTemperature,
+    private void logIfChanged(ServerPlayer player, double radiatedTemperature,
                                       Set<Object> heatNetworks, Set<Object> coolingNetworks) {
-        if (!ThermalConfig.LOGGING_ENABLED.get() || !ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
+        Double previous = lastReported.get(player.getUUID());
+        double baseline = previous != null ? previous : ThermalConfig.DEFAULT_AMBIENT_TEMPERATURE.get();
+        if (Math.abs(radiatedTemperature - baseline) <= ThermalConfig.RADIATION_CHANGE_EPSILON.get()) {
+            if (ThermalConfig.RADIATION_DEBUG_ENABLED.get()) {
+                LOGGER.debug("[MTS] Player={} direct-radiation temperature unchanged at {} (heatNetworks={}, coolingNetworks={})",
+                        player.getGameProfile().getName(), radiatedTemperature, heatNetworks, coolingNetworks);
+            }
             return;
         }
-        Double previous = LAST_RADIATED.put(player.getUUID(), radiatedTemperature);
-        if (previous == null || previous.doubleValue() != radiatedTemperature) {
+        lastReported.put(player.getUUID(), radiatedTemperature);
+        if (ThermalConfig.LOGGING_ENABLED.get() && ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
             LOGGER.info("[MTS] Player={} direct-radiation temperature changed to {} (heatNetworks={}, coolingNetworks={})",
                     player.getGameProfile().getName(), radiatedTemperature, heatNetworks, coolingNetworks);
         }

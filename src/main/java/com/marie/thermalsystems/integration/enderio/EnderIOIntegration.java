@@ -174,15 +174,20 @@ public final class EnderIOIntegration {
     }
 
     /**
-     * Registers {@link EnderIOModeRequestPayload} (client-to-server only -
-     * the server-to-client reply leg, {@link EnderIOModeResponsePayload}, is
-     * registered separately by {@link EnderIOClientIntegration}, which is
-     * the only side that ever needs to receive it).
+     * Registers both legs of the mode query: {@link EnderIOModeRequestPayload}
+     * (client-to-server) and {@link EnderIOModeResponsePayload}
+     * (server-to-client). The response must be declared here, on every
+     * physical side, or a dedicated server's channel list won't match the
+     * client's and the handshake fails. Its handler is only ever invoked on
+     * the client; the lambda body resolves {@link EnderIOClientIntegration}
+     * lazily on first call, so a dedicated server never loads that class.
      */
     private static void onRegisterPayloadHandlers(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar registrar = event.registrar(ThermalSystemsMod.MOD_ID).versioned("1");
         registrar.playToServer(EnderIOModeRequestPayload.TYPE, EnderIOModeRequestPayload.STREAM_CODEC,
                 EnderIOIntegration::onModeRequest);
+        registrar.playToClient(EnderIOModeResponsePayload.TYPE, EnderIOModeResponsePayload.STREAM_CODEC,
+                (payload, context) -> EnderIOClientIntegration.onModeResponse(payload, context));
     }
 
     /**
