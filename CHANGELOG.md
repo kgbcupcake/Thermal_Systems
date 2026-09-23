@@ -24,6 +24,11 @@ adheres to the version in [`gradle.properties`](gradle.properties).
   requirements list as a required runtime dependency for the client config screen.
 
 ### Fixed
+- Opening the Ender IO Stirling Generator control panel (and the draggable HUD control panel) no
+  longer crashes the client with `NoClassDefFoundError`; both followed MariesLib's `DraggableResizable`
+  after it moved from `dev.marie.framework.ui.edit` to `dev.marie.framework.ui.drag`.
+- Chunk loads/unloads no longer flood the log: source add/remove tracking and the per-chunk Ender IO
+  unload line now log only at DEBUG, and only with `radiationDebugEnabled` on.
 - Direct-radiation handler no longer logs "no longer has a tracked source" and "temperature changed"
   every interval for an idle player with nothing nearby. Both now log only on a real transition (a
   source leaving range, or the value moving more than the new `radiationChangeEpsilon`); per-player

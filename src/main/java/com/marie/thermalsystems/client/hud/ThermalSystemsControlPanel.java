@@ -6,7 +6,7 @@ import dev.marie.framework.ui.RenderContext;
 import dev.marie.framework.ui.component.ComponentState;
 import dev.marie.framework.ui.component.Constraint;
 import dev.marie.framework.ui.component.MarieComponent;
-import dev.marie.framework.ui.edit.DraggableResizable;
+import dev.marie.framework.ui.drag.DraggableResizable;
 import dev.marie.framework.ui.geometry.Bounds;
 import org.jetbrains.annotations.Nullable;
 

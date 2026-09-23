@@ -307,8 +307,8 @@ public final class EnderIOIntegration {
         }
         ChunkAccess chunk = event.getChunk();
         ChunkPos chunkPos = chunk.getPos();
-        if (ThermalConfig.LOGGING_ENABLED.get() && ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
-            LOGGER.info("[MTS] EnderIOIntegration onChunkUnload fired dim={} chunk=({},{})",
+        if (ThermalConfig.RADIATION_DEBUG_ENABLED.get()) {
+            LOGGER.debug("[MTS] EnderIOIntegration onChunkUnload fired dim={} chunk=({},{})",
                     level.dimension().location(), chunkPos.x, chunkPos.z);
         }
         for (BlockPos pos : chunk.getBlockEntitiesPos()) {

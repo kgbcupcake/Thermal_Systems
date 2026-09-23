@@ -51,10 +51,7 @@ public final class ActiveSourcePositions {
     public static void add(Level level, BlockPos pos, String reason) {
         BlockPos immutablePos = pos.immutable();
         boolean added = POSITIONS.computeIfAbsent(level.dimension(), key -> ConcurrentHashMap.newKeySet()).add(immutablePos);
-        if (ThermalConfig.LOGGING_ENABLED.get() && ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
-            LOGGER.info("[MTS] ActiveSourcePositions add dim={} pos={} newlyAdded={} reason={}",
-                    level.dimension().location(), immutablePos, added, reason);
-        }
+        logIfEnabled(added, "add", level, immutablePos, reason);
     }
 
     /**
@@ -65,9 +62,18 @@ public final class ActiveSourcePositions {
     public static void remove(Level level, BlockPos pos, String reason) {
         Set<BlockPos> positions = POSITIONS.get(level.dimension());
         boolean removed = positions != null && positions.remove(pos);
-        if (ThermalConfig.LOGGING_ENABLED.get() && ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
-            LOGGER.info("[MTS] ActiveSourcePositions remove dim={} pos={} wasPresent={} reason={}",
-                    level.dimension().location(), pos.immutable(), removed, reason);
+        logIfEnabled(removed, "remove", level, pos.immutable(), reason);
+    }
+
+    /**
+     * Silent by default: adds and removes log only at DEBUG, and only when
+     * {@code radiationDebugEnabled} is on - whether or not they changed the
+     * tracked set. {@code /thermal debug radiation} is the on-demand view.
+     */
+    private static void logIfEnabled(boolean changed, String action, Level level, BlockPos pos, String reason) {
+        if (ThermalConfig.RADIATION_DEBUG_ENABLED.get()) {
+            LOGGER.debug("[MTS] ActiveSourcePositions {} changed={} dim={} pos={} reason={}",
+                    action, changed, level.dimension().location(), pos, reason);
         }
     }
 
