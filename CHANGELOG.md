@@ -62,9 +62,15 @@ adheres to the version in [`gradle.properties`](gradle.properties).
   whose conduit run happens to be farther than `sourceRadiationRadius` away (previously logged as
   "no longer has a tracked source within radiation radius" and delivered no warmth even while next
   to the visible machine). The generator's own position is tracked again alongside its conduits, and
-  now delegates its heat/cooling output and network id to the same conduit network its conduits
-  report, so being in range of either the generator or its conduit contributes the same
-  once-deduplicated amount instead of double-counting.
+  now reports the same network id its conduits do (via a direct, capability-free flood-fill), so
+  being in range of either the generator or its conduit dedupes to one contribution instead of
+  double-counting.
+- Fixed a server-crashing `StackOverflowError` in the Ender IO integration: the generator-tracking
+  fix above briefly had the generator's heat/cooling output delegate into its adjacent conduit
+  network's summed value, but that network sum itself queries the generator's own output as part of
+  its boundary scan, so the two called each other forever. The generator now only shares its
+  conduit network's *id* (computed independently, without touching the network's cached sum) and
+  keeps reporting its own single-machine output directly, breaking the cycle.
 - `SourceRadiationTickHandler`'s direct-radiation debug/log output no longer lists the same network
   under both `heatNetworks` and `coolingNetworks` when only one side is actually producing anything;
   a source's inactive side (e.g. a heat/cool-mode-gated Ender IO generator sitting in Heat mode) no
