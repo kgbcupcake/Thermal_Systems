@@ -24,6 +24,10 @@ adheres to the version in [`gradle.properties`](gradle.properties).
   requirements list as a required runtime dependency for the client config screen.
 
 ### Fixed
+- Cold Sweat integration no longer silently discards a genuine heat/cooling contribution: any
+  ambient delta under ~5C (with the default `outputScale`) used to round down to `WarmthTempModifier`/
+  `FrigidnessTempModifier` strength 0, so an active but modest heat source produced no effect at all.
+  A nonzero delta is now floored at strength 1 instead of rounding away to nothing.
 - Opening the Ender IO Stirling Generator control panel (and the draggable HUD control panel) no
   longer crashes the client with `NoClassDefFoundError`; both followed MariesLib's `DraggableResizable`
   after it moved from `dev.marie.framework.ui.edit` to `dev.marie.framework.ui.drag`.
@@ -54,6 +58,17 @@ adheres to the version in [`gradle.properties`](gradle.properties).
   tracking follows conduit positions rather than the generator, and sums each distinct conduit
   network's heat/cooling exactly once even when several of its segments are simultaneously in
   range, instead of double-counting the network total once per nearby segment.
+- Direct radiation no longer drops a player standing right next to an Ender IO Stirling Generator
+  whose conduit run happens to be farther than `sourceRadiationRadius` away (previously logged as
+  "no longer has a tracked source within radiation radius" and delivered no warmth even while next
+  to the visible machine). The generator's own position is tracked again alongside its conduits, and
+  now delegates its heat/cooling output and network id to the same conduit network its conduits
+  report, so being in range of either the generator or its conduit contributes the same
+  once-deduplicated amount instead of double-counting.
+- `SourceRadiationTickHandler`'s direct-radiation debug/log output no longer lists the same network
+  under both `heatNetworks` and `coolingNetworks` when only one side is actually producing anything;
+  a source's inactive side (e.g. a heat/cool-mode-gated Ender IO generator sitting in Heat mode) no
+  longer gets recorded into the opposite side's network set just because its capability resolved.
 
 ## [0.0.1-beta] - 2026-07-29
 

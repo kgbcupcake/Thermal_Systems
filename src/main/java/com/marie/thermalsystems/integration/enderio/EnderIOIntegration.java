@@ -153,6 +153,9 @@ public final class EnderIOIntegration {
      */
     private static Block conduitBlock;
 
+    /** Mirror of {@link #conduitBlock} for the Stirling Generator - see its Javadoc. */
+    private static Block stirlingGeneratorBlock;
+
     private EnderIOIntegration() {
     }
 
@@ -258,22 +261,23 @@ public final class EnderIOIntegration {
      * remains solely responsible for the "already there when the chunk first
      * loads" case.
      *
-     * <p>Tracks {@code conduit} positions rather than the generator itself.
-     * {@link EnderIONetworkPosition}, registered against the conduit type,
-     * already sums {@code getHeatOutput()} across an entire discovered
-     * network - including whichever generators feed it - whenever it is
-     * queried from any point on that network, and now exposes a stable
+     * <p>Tracks the generator's own position alongside its conduits, not
+     * instead of them - a player can stand right next to the visible machine
+     * while its conduit run is farther away than
+     * {@code sourceRadiationRadius}, and direct radiation must still reach
+     * them there. {@link EnderIONetworkPosition}, registered against the
+     * conduit type, already sums {@code getHeatOutput()} across an entire
+     * discovered network - including whichever generators feed it - whenever
+     * it is queried from any point on that network, and exposes a stable
      * {@link EnderIONetworkPosition#getNetworkId() network id} that
      * {@code SourceRadiationTickHandler} uses to sum a given network's output
-     * only once even when several of its conduit segments are simultaneously
-     * in range of a player. Tracking the generator position directly
-     * alongside its conduits would reintroduce that double-count - the
-     * generator's own single-machine capability
-     * ({@link EnderIOBlockHeatSource}) has no network id of its own to dedupe
-     * against the network total its conduits already report - so the
-     * generator's position is deliberately left untracked here; a generator
-     * always has at least one adjacent conduit (see the Stirling Generator's
-     * required output), which is what direct radiation now keys off of.
+     * only once even when several of its positions are simultaneously in
+     * range of a player. Tracking the generator's position no longer
+     * reintroduces that double-count: {@link EnderIOBlockHeatSource} now
+     * delegates its own output and network id to the same adjacent
+     * {@link EnderIONetworkPosition} its conduits report, so a generator and
+     * its conduit dedupe as one contribution no matter which of them a
+     * player happens to be in range of.
      */
     private static void onChunkLoad(ChunkEvent.Load event) {
         if (!(event.getLevel() instanceof ServerLevel level)) {
@@ -317,21 +321,23 @@ public final class EnderIOIntegration {
     }
 
     /**
-     * Discovers newly placed generators the instant they're placed, entirely
-     * independent of any player's distance from the block - tracking must
-     * never be gated on proximity, only radiation delivery
+     * Discovers newly placed conduits or generators the instant they're
+     * placed, entirely independent of any player's distance from the block -
+     * tracking must never be gated on proximity, only radiation delivery
      * ({@code SourceRadiationTickHandler}) should be. This is what closes the
-     * same-session-placement gap chunk load/unload alone can't: a generator
+     * same-session-placement gap chunk load/unload alone can't: a block
      * placed into an already-loaded chunk fires no {@link ChunkEvent.Load}.
      *
-     * <p>Only matches {@link #conduitBlock} - see {@link #onChunkLoad}'s
-     * Javadoc for why the generator itself is deliberately excluded here.
+     * <p>Matches {@link #conduitBlock} or {@link #stirlingGeneratorBlock} -
+     * see {@link #onChunkLoad}'s Javadoc for why the generator is tracked
+     * too.
      */
     private static void onBlockPlaced(BlockEvent.EntityPlaceEvent event) {
         if (!(event.getLevel() instanceof ServerLevel level)) {
             return;
         }
-        if (event.getPlacedBlock().getBlock() != conduitBlock) {
+        Block placed = event.getPlacedBlock().getBlock();
+        if (placed != conduitBlock && placed != stirlingGeneratorBlock) {
             return;
         }
         ActiveSourcePositions.add(level, event.getPos(), "block placed");
@@ -339,10 +345,10 @@ public final class EnderIOIntegration {
 
     /**
      * Mirror of {@link #onBlockPlaced} for removal: fires immediately when a
-     * tracked conduit is broken, regardless of player distance. Uses
-     * {@link BlockEvent#getState()} (the state being broken) rather than a
-     * block-entity lookup, since {@code BreakEvent} fires before the block is
-     * actually removed but there is no guarantee a block-entity lookup at
+     * tracked conduit or generator is broken, regardless of player distance.
+     * Uses {@link BlockEvent#getState()} (the state being broken) rather than
+     * a block-entity lookup, since {@code BreakEvent} fires before the block
+     * is actually removed but there is no guarantee a block-entity lookup at
      * this exact point is any more reliable than the state NeoForge already
      * captured for the event.
      */
@@ -350,7 +356,8 @@ public final class EnderIOIntegration {
         if (!(event.getLevel() instanceof ServerLevel level)) {
             return;
         }
-        if (event.getState().getBlock() != conduitBlock) {
+        Block broken = event.getState().getBlock();
+        if (broken != conduitBlock && broken != stirlingGeneratorBlock) {
             return;
         }
         ActiveSourcePositions.remove(level, event.getPos(), "block broken");
@@ -390,28 +397,31 @@ public final class EnderIOIntegration {
                 iterator.remove();
                 if (ThermalConfig.LOGGING_ENABLED.get() && ThermalConfig.RADIATION_LOGGING_ENABLED.get()) {
                     LOGGER.info("[MTS] ActiveSourcePositions remove dim={} pos={} wasPresent=true reason={}",
-                            level.dimension().location(), pos, "periodic reverify (no longer a conduit)");
+                            level.dimension().location(), pos, "periodic reverify (no longer a conduit or generator)");
                 }
             }
         }
     }
 
     /**
-     * Matches only the conduit type - see the {@link #onChunkLoad} Javadoc
-     * for why the generator's own position is deliberately not tracked here.
+     * Matches the conduit type or the Stirling Generator type - see the
+     * {@link #onChunkLoad} Javadoc for why the generator's own position is
+     * tracked here too.
      */
     private static boolean isTrackedSourceType(Level level, BlockPos pos) {
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (blockEntity == null) {
             return false;
         }
-        return blockEntity.getType() == CONDUIT_BLOCK_ENTITY_TYPE;
+        return blockEntity.getType() == CONDUIT_BLOCK_ENTITY_TYPE || blockEntity.getType() == stirlingGeneratorType;
     }
 
     private static void onRegisterCapabilities(RegisterCapabilitiesEvent event) {
         BlockEntityType<?> generatorType = BuiltInRegistries.BLOCK_ENTITY_TYPE.get(
                 ResourceLocation.fromNamespaceAndPath(ENDERIO_MOD_ID, STIRLING_GENERATOR_PATH));
         stirlingGeneratorType = generatorType;
+        stirlingGeneratorBlock = BuiltInRegistries.BLOCK.get(
+                ResourceLocation.fromNamespaceAndPath(ENDERIO_MOD_ID, STIRLING_GENERATOR_PATH));
         registerSourceHeat(event, generatorType);
 
         BlockEntityType<?> conduitType = BuiltInRegistries.BLOCK_ENTITY_TYPE.get(

@@ -244,13 +244,19 @@ public final class SourceRadiationTickHandler {
             anyInRange = true;
             IHeatSource heatSource = HeatSourceCapabilities.HEAT_SOURCE.getCapability(level, pos, null, null, null);
             if (heatSource != null) {
-                Object key = heatSource.getNetworkId();
-                heatByNetwork.putIfAbsent(key != null ? key : pos, heatSource.getHeatOutput());
+                double heatOutput = heatSource.getHeatOutput();
+                if (heatOutput != 0.0) {
+                    Object key = heatSource.getNetworkId();
+                    heatByNetwork.putIfAbsent(key != null ? key : pos, heatOutput);
+                }
             }
             ICoolingSource coolingSource = CoolingSourceCapabilities.COOLING_SOURCE.getCapability(level, pos, null, null, null);
             if (coolingSource != null) {
-                Object key = coolingSource.getNetworkId();
-                coolingByNetwork.putIfAbsent(key != null ? key : pos, coolingSource.getCoolingOutput());
+                double coolingOutput = coolingSource.getCoolingOutput();
+                if (coolingOutput != 0.0) {
+                    Object key = coolingSource.getNetworkId();
+                    coolingByNetwork.putIfAbsent(key != null ? key : pos, coolingOutput);
+                }
             }
         }
 

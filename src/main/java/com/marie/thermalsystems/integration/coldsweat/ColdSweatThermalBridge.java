@@ -77,7 +77,7 @@ public final class ColdSweatThermalBridge implements ITemperatureBridge {
     @Override
     public void applyAmbientTemperature(ServerPlayer player, double ambientTemperatureCelsius, UUID sourceId) {
         double delta = ambientTemperatureCelsius - ThermalConfig.COLDSWEAT_TEMPERATURE_OFFSET.get();
-        int scaled = (int) Math.round(delta * ThermalConfig.COLDSWEAT_OUTPUT_SCALE.get());
+        int scaled = scaleDelta(delta);
         // WarmthTempModifier/FrigidnessTempModifier both store their strength as an
         // always-non-negative int (Cold Sweat keeps "Warming"/"Cooling" as two separate
         // NBT ints, never a signed one), so the sign of scaled selects which one is
@@ -110,6 +110,25 @@ public final class ColdSweatThermalBridge implements ITemperatureBridge {
 
     static void clearPlayer(UUID playerId) {
         CONTRIBUTIONS.remove(playerId);
+    }
+
+    /**
+     * {@code Math.round(delta * outputScale)} alone lets any active heat/cooling
+     * source go completely invisible to Cold Sweat: with the default 0.1 scale,
+     * every delta under 5C rounds to strength 0 and silently produces no
+     * modifier at all, even though the source is genuinely contributing. Below
+     * a tiny epsilon (float noise, not a real signal) delta is treated as
+     * exactly zero; above it, the scaled magnitude is floored at 1 so a real,
+     * nonzero contribution is never discarded outright - it only ever gets
+     * scaled up from the weakest possible effect, never down to nothing.
+     */
+    private static int scaleDelta(double delta) {
+        if (Math.abs(delta) < 0.01) {
+            return 0;
+        }
+        double magnitude = Math.abs(delta) * ThermalConfig.COLDSWEAT_OUTPUT_SCALE.get();
+        int strength = Math.max(1, (int) Math.round(magnitude));
+        return delta > 0 ? strength : -strength;
     }
 
     private static final AtomicBoolean WARMTH_WARNED_ONCE = new AtomicBoolean(false);
