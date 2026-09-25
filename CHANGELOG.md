@@ -24,6 +24,13 @@ adheres to the version in [`gradle.properties`](gradle.properties).
   requirements list as a required runtime dependency for the client config screen.
 
 ### Fixed
+- Cold Sweat integration now actually pushes players into Hot/Cold near a source, in both
+  directions. It previously reused Cold Sweat's `WarmthTempModifier`/`FrigidnessTempModifier` -
+  Hearth/Icebox comfort modifiers whose `calculate()` only ever nudges temperature back toward Cold
+  Sweat's neutral midpoint, and can never push it past that midpoint - so cooling only ever worked
+  while already warmer than neutral (never the common case) and heating only while already colder.
+  Now uses Cold Sweat's `SimpleTempModifier` with an unconditional add, which works regardless of
+  the player's current temperature, the way an actual heat/cooling source needs to.
 - Cold Sweat integration now actually updates the player's warmth/cooling every time it changes,
   instead of applying it once and freezing forever. `Temperature.addModifier(..., Placement.LAST.noDuplicates(...))`
   only inserts a modifier when none of the same class exists yet, so every call after the first

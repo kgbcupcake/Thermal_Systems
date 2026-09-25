@@ -251,12 +251,9 @@ public final class ThermalConfig {
                 .defineInRange("temperatureOffset", 20.0, -Double.MAX_VALUE, Double.MAX_VALUE);
 
         COLDSWEAT_OUTPUT_SCALE = builder
-                .comment("Scales the Celsius delta from temperatureOffset into the int strength WarmthTempModifier/",
-                        "FrigidnessTempModifier expect. Cold Sweat's own Hearth block (the reference for what",
-                        "'meaningfully warm' looks like) typically passes a strength of 0 or 1 - ThermalSourceTempModifier",
-                        "further multiplies that by ConfigSettings.THERMAL_SOURCE_STRENGTH (0.75 by default) against a",
-                        "MIN_TEMP/MAX_TEMP comfortable range that only spans about 1.2 units - so a strength of 1 is",
-                        "already a strong effect. The default here keeps a 10C delta at roughly strength 1.")
+                .comment("Scales the Celsius delta from temperatureOffset into Cold Sweat's own WORLD temperature",
+                        "units, which are small (its comfortable range is only about 1.2 units wide by default).",
+                        "The default here keeps a 10C delta at roughly 1.0 units.")
                 .defineInRange("outputScale", 0.1, 0.0, Double.MAX_VALUE);
 
         builder.pop();
