@@ -24,6 +24,12 @@ adheres to the version in [`gradle.properties`](gradle.properties).
   requirements list as a required runtime dependency for the client config screen.
 
 ### Fixed
+- Cold Sweat integration now actually updates the player's warmth/cooling every time it changes,
+  instead of applying it once and freezing forever. `Temperature.addModifier(..., Placement.LAST.noDuplicates(...))`
+  only inserts a modifier when none of the same class exists yet, so every call after the first
+  silently did nothing - the bridge's own logs showed the correct, changing values the whole time,
+  but Cold Sweat never received any update past the first one. Now uses Cold Sweat's
+  `replaceOrAddModifier`, which updates the existing modifier in place.
 - Cold Sweat integration no longer silently discards a genuine heat/cooling contribution: any
   ambient delta under ~5C (with the default `outputScale`) used to round down to `WarmthTempModifier`/
   `FrigidnessTempModifier` strength 0, so an active but modest heat source produced no effect at all.

@@ -6,7 +6,6 @@ import com.momosoftworks.coldsweat.api.temperature.modifier.FrigidnessTempModifi
 import com.momosoftworks.coldsweat.api.temperature.modifier.WarmthTempModifier;
 import com.momosoftworks.coldsweat.api.util.Temperature;
 import com.momosoftworks.coldsweat.api.util.placement.Matcher;
-import com.momosoftworks.coldsweat.api.util.placement.Placement;
 import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,8 +135,7 @@ public final class ColdSweatThermalBridge implements ITemperatureBridge {
 
     private static void applyWarmth(ServerPlayer player, int warming) {
         try {
-            Temperature.addModifier(player, new WarmthTempModifier(warming), Temperature.Trait.WORLD,
-                    Placement.LAST.noDuplicates(Matcher.SAME_CLASS));
+            Temperature.replaceOrAddModifier(player, new WarmthTempModifier(warming), Temperature.Trait.WORLD, Matcher.SAME_CLASS);
         } catch (Exception e) {
             if (ThermalConfig.LOGGING_ENABLED.get() || WARMTH_WARNED_ONCE.compareAndSet(false, true)) {
                 LOGGER.warn("[MTS] ColdSweatThermalBridge.applyWarmth caught exception from Cold Sweat for player={}",
@@ -148,8 +146,7 @@ public final class ColdSweatThermalBridge implements ITemperatureBridge {
 
     private static void applyFrigidness(ServerPlayer player, int cooling) {
         try {
-            Temperature.addModifier(player, new FrigidnessTempModifier(cooling), Temperature.Trait.WORLD,
-                    Placement.LAST.noDuplicates(Matcher.SAME_CLASS));
+            Temperature.replaceOrAddModifier(player, new FrigidnessTempModifier(cooling), Temperature.Trait.WORLD, Matcher.SAME_CLASS);
         } catch (Exception e) {
             if (ThermalConfig.LOGGING_ENABLED.get() || FRIGIDNESS_WARNED_ONCE.compareAndSet(false, true)) {
                 LOGGER.warn("[MTS] ColdSweatThermalBridge.applyFrigidness caught exception from Cold Sweat for player={}",
