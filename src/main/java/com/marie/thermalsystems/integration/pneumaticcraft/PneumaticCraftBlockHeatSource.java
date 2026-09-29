@@ -39,6 +39,16 @@ final class PneumaticCraftBlockHeatSource implements IHeatSource, ICoolingSource
         return convert().coolingOutput();
     }
 
+    /**
+     * Resolves the {@code IHeatSource}/{@code ICoolingSource} diamond for
+     * this single-machine adapter, which has no network of its own -
+     * explicitly {@code null}, same as each interface's own default.
+     */
+    @Override
+    public Object getNetworkId() {
+        return null;
+    }
+
     private ThermalExchangerConversion.Output convert() {
         IHeatExchangerLogic logic = PNCCapabilities.HEAT_EXCHANGER_BLOCK.getCapability(level, pos, null, null, null);
         if (logic == null) {

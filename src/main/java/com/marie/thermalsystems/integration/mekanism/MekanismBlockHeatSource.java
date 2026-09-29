@@ -38,6 +38,16 @@ final class MekanismBlockHeatSource implements IHeatSource, ICoolingSource {
         return convert().coolingOutput();
     }
 
+    /**
+     * Resolves the {@link IHeatSource}/{@link ICoolingSource} diamond for
+     * this single-machine adapter, which has no network of its own -
+     * explicitly {@code null}, same as each interface's own default.
+     */
+    @Override
+    public Object getNetworkId() {
+        return null;
+    }
+
     private MekanismHeatConversion.Output convert() {
         IHeatHandler handler = MekanismIntegration.HEAT_HANDLER.getCapability(level, pos, null, null, null);
         if (handler == null) {

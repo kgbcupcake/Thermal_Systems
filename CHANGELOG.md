@@ -12,8 +12,69 @@ adheres to the version in [`gradle.properties`](gradle.properties).
 ## [Unreleased]
 
 ### Added
+- `/thermal debug radiation` (op only) now ships with the core mod and reports each player's applied
+  radiation temperature; new `radiationDebugEnabled` (default off) and `radiationChangeEpsilon`
+  options on the Simulation tab.
+- Optional Tough As Nails integration: heat and cooling from zones and nearby sources now shift a
+  player's Tough As Nails temperature by one or two levels once they cross configurable
+  thresholds, never pushing a player into Hot or Icy from outside it. Adds a Tough As Nails tab to
+  the config screen, and `/thermal debug radiation` (op only, available with Tough As Nails
+  installed) to show each player's stored value, step count, and Tough As Nails level before/after.
 - README, CHANGELOG, and CLAUDE.md project documentation, including Cloth Config API in the
   requirements list as a required runtime dependency for the client config screen.
+
+### Fixed
+- Cold Sweat integration no longer silently discards a genuine heat/cooling contribution: any
+  ambient delta under ~5C (with the default `outputScale`) used to round down to `WarmthTempModifier`/
+  `FrigidnessTempModifier` strength 0, so an active but modest heat source produced no effect at all.
+  A nonzero delta is now floored at strength 1 instead of rounding away to nothing.
+- Opening the Ender IO Stirling Generator control panel (and the draggable HUD control panel) no
+  longer crashes the client with `NoClassDefFoundError`; both followed MariesLib's `DraggableResizable`
+  after it moved from `dev.marie.framework.ui.edit` to `dev.marie.framework.ui.drag`.
+- Chunk loads/unloads no longer flood the log: source add/remove tracking and the per-chunk Ender IO
+  unload line now log only at DEBUG, and only with `radiationDebugEnabled` on.
+- Direct-radiation handler no longer logs "no longer has a tracked source" and "temperature changed"
+  every interval for an idle player with nothing nearby. Both now log only on a real transition (a
+  source leaving range, or the value moving more than the new `radiationChangeEpsilon`); per-player
+  state is reset on logout and dimension change. Bridge calls are unchanged.
+- Dedicated servers with Ender IO integration no longer reject clients with "channel missing on the
+  server side" for `thermalsystems:enderio_mode_response`; the response packet is now registered on
+  both sides while its handling stays client-only.
+- Ender IO Stirling Generator heat/cool mode now persists across server restarts, stored as a data
+  attachment on the generator's own block entity instead of an in-memory registry that silently
+  reset every generator to heating on restart.
+- Cold Sweat thermal bridge no longer crashes the server tick loop when Cold Sweat's own
+  modifier-update internals throw; it now always re-adds modifiers through Cold Sweat's
+  deduplicating API instead of mutating them manually, and catches (and logs) any exception from
+  Cold Sweat rather than letting it propagate.
+- Cold Sweat and LSO thermal bridges no longer spam the log every interval; they now log only when
+  the delivered value actually changes for a given caller, matching the direct-radiation handler's
+  existing behavior. The temperature effect itself is still applied on every call.
+- Ender IO integration no longer logs a line for every chunk unload in the world regardless of
+  logging settings; that diagnostic log is now gated behind `LOGGING_ENABLED`/
+  `RADIATION_LOGGING_ENABLED` like the rest of the module's logging.
+- Direct radiation now warms/cools players standing near an Ender IO conduit fed by a generator
+  outside `sourceRadiationRadius`, instead of only near the generator itself. Direct-radiation
+  tracking follows conduit positions rather than the generator, and sums each distinct conduit
+  network's heat/cooling exactly once even when several of its segments are simultaneously in
+  range, instead of double-counting the network total once per nearby segment.
+- Direct radiation no longer drops a player standing right next to an Ender IO Stirling Generator
+  whose conduit run happens to be farther than `sourceRadiationRadius` away (previously logged as
+  "no longer has a tracked source within radiation radius" and delivered no warmth even while next
+  to the visible machine). The generator's own position is tracked again alongside its conduits, and
+  now reports the same network id its conduits do (via a direct, capability-free flood-fill), so
+  being in range of either the generator or its conduit dedupes to one contribution instead of
+  double-counting.
+- Fixed a server-crashing `StackOverflowError` in the Ender IO integration: the generator-tracking
+  fix above briefly had the generator's heat/cooling output delegate into its adjacent conduit
+  network's summed value, but that network sum itself queries the generator's own output as part of
+  its boundary scan, so the two called each other forever. The generator now only shares its
+  conduit network's *id* (computed independently, without touching the network's cached sum) and
+  keeps reporting its own single-machine output directly, breaking the cycle.
+- `SourceRadiationTickHandler`'s direct-radiation debug/log output no longer lists the same network
+  under both `heatNetworks` and `coolingNetworks` when only one side is actually producing anything;
+  a source's inactive side (e.g. a heat/cool-mode-gated Ender IO generator sitting in Heat mode) no
+  longer gets recorded into the opposite side's network set just because its capability resolved.
 
 ## [0.0.1-beta] - 2026-07-29
 

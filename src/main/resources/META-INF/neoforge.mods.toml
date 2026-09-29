@@ -8,7 +8,7 @@ version = "${mod_version}"
 displayName = "${mod_name}"
 authors = "${mod_authors}"
 description = '''${mod_description}'''
-logoFile ="Thermal_icon.png"
+logoFile ="thermal_icon.png"
 
 [[dependencies.${mod_id}]]
     modId = "neoforge"
@@ -63,5 +63,12 @@ logoFile ="Thermal_icon.png"
     modId = "cold_sweat"
     type = "optional"
     versionRange = "${cold_sweat_version_range}"
+    ordering = "NONE"
+    side = "BOTH"
+
+[[dependencies.${mod_id}]]
+    modId = "toughasnails"
+    type = "optional"
+    versionRange = "${tough_as_nails_version_range}"
     ordering = "NONE"
     side = "BOTH"

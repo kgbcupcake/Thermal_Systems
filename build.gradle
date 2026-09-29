@@ -110,6 +110,10 @@ dependencies {
     // See integration/coldsweat/ColdSweatIntegration.java.
     compileOnly "maven.modrinth:cold-sweat:${cold_sweat_version}"
 
+    // Compile-time only: Tough As Nails integration must remain optional at runtime.
+    // See integration/toughasnails/ToughAsNailsIntegration.java.
+    compileOnly "maven.modrinth:tough-as-nails:${tough_as_nails_version}"
+
     // Test-scoped only, mirroring the dependencies above: capability-registration
     // tests use stub implementations of the target mods' public API interfaces, which
     // requires these interfaces on the test runtime classpath too (unlike the compileOnly
@@ -145,6 +149,7 @@ tasks.named('processResources', ProcessResources).configure {
         enderio_version_range  : enderio_version_range,
         lso_version_range      : lso_version_range,
         cold_sweat_version_range: cold_sweat_version_range,
+        tough_as_nails_version_range: tough_as_nails_version_range,
         maries_framework_version_range: maries_framework_version_range,
         mod_id                 : mod_id,
         mod_name               : mod_name,

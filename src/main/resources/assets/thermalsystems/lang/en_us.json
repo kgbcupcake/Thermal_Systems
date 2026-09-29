@@ -13,6 +13,7 @@
   "config.thermalsystems.category.enderio": "Ender IO",
   "config.thermalsystems.category.lso": "LSO",
   "config.thermalsystems.category.coldsweat": "Cold Sweat",
+  "config.thermalsystems.category.toughasnails": "Tough As Nails",
 
   "config.thermalsystems.systemEnabled": "System Enabled",
   "config.thermalsystems.systemEnabled.desc": "Master on/off switch, also surfaced by the persistent Thermal Systems control panel HUD's own toggle.",
@@ -30,6 +31,10 @@
   "config.thermalsystems.loggingEnabled.desc": "Master switch gating per-interval log output. When off, silences everything below regardless of the sub-flags.",
   "config.thermalsystems.radiationLoggingEnabled": "Radiation Logging Enabled",
   "config.thermalsystems.radiationLoggingEnabled.desc": "Gates SourceRadiationTickHandler/ActiveSourcePositions logging. Only takes effect when Logging Enabled is also on.",
+  "config.thermalsystems.radiationDebugEnabled": "Radiation Debug Logging",
+  "config.thermalsystems.radiationDebugEnabled.desc": "Emits the direct-radiation handler's per-interval, per-player diagnostics at DEBUG level. Off by default; /thermal debug radiation shows the same state on demand.",
+  "config.thermalsystems.radiationChangeEpsilon": "Radiation Change Epsilon",
+  "config.thermalsystems.radiationChangeEpsilon.desc": "Smallest difference, in Celsius, between a player's direct-radiation temperature and the last one logged that counts as a change worth logging.",
   "config.thermalsystems.bindingLoggingEnabled": "Binding Logging Enabled",
   "config.thermalsystems.bindingLoggingEnabled.desc": "Gates ZoneSourceScanner/ZoneSourceBindingTickHandler logging. Only takes effect when Logging Enabled is also on.",
 
@@ -78,6 +83,17 @@
   "config.thermalsystems.coldsweatTemperatureOffset.desc": "Ambient temperature, in Celsius, treated as Cold Sweat's zero-delta neutral point. Matches Default Ambient Temperature by default.",
   "config.thermalsystems.coldsweatOutputScale": "Output Scale",
   "config.thermalsystems.coldsweatOutputScale.desc": "Scales the Celsius delta from the neutral point into the small int strength Cold Sweat's WarmthTempModifier/FrigidnessTempModifier expect. A strength of 1 is already a strong effect against Cold Sweat's comfortable range, so this stays small - the default keeps a 10C delta at roughly strength 1.",
+
+  "config.thermalsystems.toughasnailsEnabled": "Enabled",
+  "config.thermalsystems.toughasnailsEnabled.desc": "Config-level on/off switch for the Tough As Nails integration. Separate from whether Tough As Nails is actually installed - both must be true for the integration to activate. Turning it off after startup stops the modifier from changing anything, but a restart is needed to fully unregister it.",
+  "config.thermalsystems.toughasnailsHeatOneStepThreshold": "Heat One-Step Threshold",
+  "config.thermalsystems.toughasnailsHeatOneStepThreshold.desc": "Degrees Celsius above Default Ambient Temperature (summed across all sources affecting a player) at which the player's Tough As Nails temperature rises by one level.",
+  "config.thermalsystems.toughasnailsHeatTwoStepThreshold": "Heat Two-Step Threshold",
+  "config.thermalsystems.toughasnailsHeatTwoStepThreshold.desc": "Degrees Celsius above Default Ambient Temperature at which the player's Tough As Nails temperature rises by two levels. A player is never pushed into Hot from outside it - the result stops at Warm.",
+  "config.thermalsystems.toughasnailsCoolingOneStepThreshold": "Cooling One-Step Threshold",
+  "config.thermalsystems.toughasnailsCoolingOneStepThreshold.desc": "Degrees Celsius below Default Ambient Temperature (as a positive number) at which the player's Tough As Nails temperature drops by one level.",
+  "config.thermalsystems.toughasnailsCoolingTwoStepThreshold": "Cooling Two-Step Threshold",
+  "config.thermalsystems.toughasnailsCoolingTwoStepThreshold.desc": "Degrees Celsius below Default Ambient Temperature (as a positive number) at which the player's Tough As Nails temperature drops by two levels. A player is never pushed into Icy from outside it - the result stops at Cold.",
 
   "config.thermalsystems.importExport.export.title": "Export Thermal Systems Config",
   "config.thermalsystems.importExport.export.toFile": "Export to File",

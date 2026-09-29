@@ -8,7 +8,9 @@ import org.slf4j.LoggerFactory;
 import sfiomn.legendarysurvivaloverhaul.api.temperature.TemperatureEnum;
 import sfiomn.legendarysurvivaloverhaul.api.temperature.TemperatureUtil;
 
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Bridges Thermal Systems' resolved per-player ambient temperature into
@@ -51,12 +53,26 @@ public final class LSOThermalBridge implements ITemperatureBridge {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LSOThermalBridge.class);
 
+    /**
+     * Last delta logged per {@code sourceId} - see {@link ITemperatureBridge}'s
+     * Javadoc on why each caller's contribution must be tracked independently.
+     * {@code PlayerTemperatureBridgeHandler} and {@code SourceRadiationTickHandler}
+     * both call this bridge every interval regardless of whether their delivered
+     * value changed, so without this check every interval would log a line per
+     * caller forever. The modifier is still applied on every call; only the log
+     * line is gated.
+     */
+    private static final Map<UUID, Double> LAST_LOGGED_DELTA = new ConcurrentHashMap<>();
+
     @Override
     public void applyAmbientTemperature(ServerPlayer player, double ambientTemperatureCelsius, UUID sourceId) {
         double delta = ambientTemperatureCelsius - ThermalConfig.LSO_TEMPERATURE_OFFSET.get();
         if (ThermalConfig.LOGGING_ENABLED.get()) {
-            LOGGER.info("[MTS] LSOThermalBridge.applyAmbientTemperature player={} ambientC={} delta={} sourceId={}",
-                    player.getGameProfile().getName(), ambientTemperatureCelsius, delta, sourceId);
+            Double previous = LAST_LOGGED_DELTA.put(sourceId, delta);
+            if (previous == null || previous.doubleValue() != delta) {
+                LOGGER.info("[MTS] LSOThermalBridge.applyAmbientTemperature player={} ambientC={} delta={} sourceId={}",
+                        player.getGameProfile().getName(), ambientTemperatureCelsius, delta, sourceId);
+            }
         }
         TemperatureUtil.addTemperatureModifier(player, delta, sourceId);
     }

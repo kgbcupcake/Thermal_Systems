@@ -8,6 +8,7 @@ import com.marie.thermalsystems.client.config.categories.MekanismCategory;
 import com.marie.thermalsystems.client.config.categories.PneumaticCraftCategory;
 import com.marie.thermalsystems.client.config.categories.PresetsCategory;
 import com.marie.thermalsystems.client.config.categories.SimulationCategory;
+import com.marie.thermalsystems.client.config.categories.ToughAsNailsCategory;
 import com.marie.thermalsystems.data.config.ThermalConfig;
 import me.shedaniel.clothconfig2.api.ConfigBuilder;
 import me.shedaniel.clothconfig2.api.ConfigEntryBuilder;
@@ -44,6 +45,7 @@ public final class ThermalSystemsConfigScreen {
         PneumaticCraftCategory.addPneumaticCraftCategory(builder, entryBuilder);
         LSOCategory.addLSOCategory(builder, entryBuilder);
         ColdSweatCategory.addColdSweatCategory(builder, entryBuilder);
+        ToughAsNailsCategory.addToughAsNailsCategory(builder, entryBuilder);
 
         builder.setAlwaysShowTabs(true);
         builder.setAfterInitConsumer(ThermalConfigSidebarLayout::apply);

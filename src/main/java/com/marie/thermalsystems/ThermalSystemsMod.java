@@ -7,9 +7,13 @@ import com.marie.thermalsystems.hover.ThermalHoverProvider;
 import com.marie.thermalsystems.hud.ThermalSystemsHud;
 import com.marie.thermalsystems.integration.coldsweat.ColdSweatIntegration;
 import com.marie.thermalsystems.integration.enderio.EnderIOIntegration;
+import com.marie.thermalsystems.integration.enderio.EnderIOThermalModeAttachment;
 import com.marie.thermalsystems.integration.lso.LSOIntegration;
 import com.marie.thermalsystems.integration.mekanism.MekanismIntegration;
 import com.marie.thermalsystems.integration.pneumaticcraft.PneumaticCraftIntegration;
+import com.marie.thermalsystems.integration.toughasnails.ToughAsNailsIntegration;
+import com.marie.thermalsystems.radiation.SourceRadiationTickHandler;
+import net.neoforged.neoforge.common.NeoForge;
 import dev.marie.framework.api.marieapi.MarieAPI;
 import dev.marie.framework.core.MarieBootstrap;
 import net.neoforged.api.distmarker.Dist;
@@ -50,7 +54,7 @@ import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
  * <p>{@link ThermalSystemsHud#init(IEventBus)} is the one exception to "config and optional
  * integrations" - it registers {@code SystemToggleRequestPayload} for the persistent Thermal
  * Systems control panel HUD, core mod functionality rather than a foreign-mod integration, so it's
- * called unconditionally here rather than from {@link #initIntegrations(IEventBus)}.
+ * called unconditionally here rather than from {@link #initIntegrations(IEventBus, SourceRadiationTickHandler)}.
  */
 @Mod(ThermalSystemsMod.MOD_ID)
 public class ThermalSystemsMod {
@@ -59,9 +63,13 @@ public class ThermalSystemsMod {
 
     public ThermalSystemsMod(IEventBus modEventBus, ModContainer modContainer) {
         MarieBootstrap.attachFrameworkServices(modEventBus);
+        EnderIOThermalModeAttachment.register(modEventBus);
         MarieAPI.registerBlockHoverProvider(new ThermalHoverProvider());
         ThermalContextRegistration.register(MOD_ID);
         ThermalSystemsHud.init(modEventBus);
+
+        SourceRadiationTickHandler radiationHandler = new SourceRadiationTickHandler();
+        NeoForge.EVENT_BUS.register(radiationHandler);
 
         modContainer.registerConfig(ModConfig.Type.COMMON, ThermalConfig.SPEC);
 
@@ -74,11 +82,11 @@ public class ThermalSystemsMod {
             if (event.getConfig().getSpec() != ThermalConfig.SPEC) {
                 return;
             }
-            initIntegrations(modEventBus);
+            initIntegrations(modEventBus, radiationHandler);
         });
     }
 
-    private static void initIntegrations(IEventBus modEventBus) {
+    private static void initIntegrations(IEventBus modEventBus, SourceRadiationTickHandler radiationHandler) {
         if (ModList.get().isLoaded(PneumaticCraftIntegration.PNC_MOD_ID)) {
             PneumaticCraftIntegration.init(modEventBus);
         }
@@ -97,6 +105,10 @@ public class ThermalSystemsMod {
 
         if (ModList.get().isLoaded(ColdSweatIntegration.COLDSWEAT_MOD_ID)) {
             ColdSweatIntegration.init();
+        }
+
+        if (ModList.get().isLoaded(ToughAsNailsIntegration.TOUGHASNAILS_MOD_ID)) {
+            ToughAsNailsIntegration.init(modEventBus, radiationHandler);
         }
     }
 }

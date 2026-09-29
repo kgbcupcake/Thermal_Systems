@@ -4,7 +4,9 @@ import com.marie.thermalsystems.api.cooling.ICoolingSource;
 import com.marie.thermalsystems.api.heating.IHeatSource;
 import com.marie.thermalsystems.data.config.ThermalConfig;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.energy.IEnergyStorage;
 
@@ -22,10 +24,17 @@ import net.neoforged.neoforge.energy.IEnergyStorage;
  * <p>Unlike Mekanism's temperature-delta split, the generator's converted
  * output has no natural heat/cool sign of its own - it only ever produces
  * energy - so the split here is mode-gated instead, via
- * {@link EnderIOAdapterModeRegistry}: the converted value flows to
+ * {@link EnderIOThermalModeAttachment}: the converted value flows to
  * {@link #getHeatOutput()} in {@link ThermalMode#HEAT} and to
  * {@link #getCoolingOutput()} in {@link ThermalMode#COOL}, never both at
  * once.
+ *
+ * <p>{@link #getNetworkId()} shares its adjacent conduit's network id (via a
+ * capability-free flood-fill) so {@code SourceRadiationTickHandler} dedupes
+ * the generator and its conduit as one contribution. It must never go
+ * through {@link EnderIONetworkPosition} to get that id - that class's
+ * {@code recompute()} queries this generator's own capability as part of
+ * its boundary scan, so calling back into it here would recurse infinitely.
  */
 final class EnderIOBlockHeatSource implements IHeatSource, ICoolingSource {
 
@@ -39,12 +48,35 @@ final class EnderIOBlockHeatSource implements IHeatSource, ICoolingSource {
 
     @Override
     public double getHeatOutput() {
-        return EnderIOAdapterModeRegistry.get(level, pos) == ThermalMode.HEAT ? convert() : 0.0;
+        return currentMode() == ThermalMode.HEAT ? convert() : 0.0;
     }
 
     @Override
     public double getCoolingOutput() {
-        return EnderIOAdapterModeRegistry.get(level, pos) == ThermalMode.COOL ? convert() : 0.0;
+        return currentMode() == ThermalMode.COOL ? convert() : 0.0;
+    }
+
+    /** {@code null} if the generator has no adjacent conduit. */
+    @Override
+    public Object getNetworkId() {
+        for (Direction direction : Direction.values()) {
+            BlockPos neighborPos = pos.relative(direction);
+            BlockEntity neighbor = level.getBlockEntity(neighborPos);
+            if (neighbor != null && neighbor.getType() == EnderIOIntegration.CONDUIT_BLOCK_ENTITY_TYPE) {
+                EnderIONetworkDiscovery.NetworkResult network =
+                        EnderIONetworkDiscovery.discover(neighborPos, level, EnderIOIntegration.CONDUIT_BLOCK_ENTITY_TYPE);
+                return network.conduits().stream().min(BlockPos::compareTo).orElse(null);
+            }
+        }
+        return null;
+    }
+
+    private ThermalMode currentMode() {
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        if (blockEntity == null) {
+            return ThermalMode.HEAT;
+        }
+        return EnderIOThermalModeAttachment.get(blockEntity);
     }
 
     private double convert() {

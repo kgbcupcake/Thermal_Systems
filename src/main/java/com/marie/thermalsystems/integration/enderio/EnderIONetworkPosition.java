@@ -12,7 +12,6 @@ import net.minecraft.world.level.Level;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -65,6 +64,22 @@ final class EnderIONetworkPosition implements IHeatSource, ICoolingSource {
         return resolve().coolingSum();
     }
 
+    /**
+     * A stable identity for the network this position belongs to, used by
+     * {@code SourceRadiationTickHandler} to sum a network's heat/cooling
+     * exactly once even when several of its positions are simultaneously in
+     * range of a player. The lowest {@link BlockPos} (by natural,
+     * coordinate-wise ordering) among the discovered network's own conduit
+     * membership - not the boundary - so it comes out identical regardless
+     * of which conduit on the network this instance happens to wrap, and
+     * {@code null} only in the pathological case where {@code pos} no longer
+     * resolves to a conduit at all (network already gone).
+     */
+    @Override
+    public Object getNetworkId() {
+        return resolve().networkId();
+    }
+
     private CacheEntry resolve() {
         Map<BlockPos, CacheEntry> levelCache = CACHE.computeIfAbsent(level.dimension(), key -> new ConcurrentHashMap<>());
         long now = level.getGameTime();
@@ -81,11 +96,12 @@ final class EnderIONetworkPosition implements IHeatSource, ICoolingSource {
     }
 
     private CacheEntry recompute() {
-        Set<BlockPos> boundary = EnderIONetworkDiscovery.discoverBoundary(pos, level, EnderIOIntegration.CONDUIT_BLOCK_ENTITY_TYPE);
+        EnderIONetworkDiscovery.NetworkResult network =
+                EnderIONetworkDiscovery.discover(pos, level, EnderIOIntegration.CONDUIT_BLOCK_ENTITY_TYPE);
 
         List<Double> heatOutputs = new ArrayList<>();
         List<Double> coolingOutputs = new ArrayList<>();
-        for (BlockPos boundaryPos : boundary) {
+        for (BlockPos boundaryPos : network.boundary()) {
             IHeatSource heatSource = HeatSourceCapabilities.HEAT_SOURCE.getCapability(level, boundaryPos, null, null, null);
             if (heatSource != null) {
                 heatOutputs.add(heatSource.getHeatOutput());
@@ -96,9 +112,11 @@ final class EnderIONetworkPosition implements IHeatSource, ICoolingSource {
             }
         }
 
-        return new CacheEntry(level.getGameTime(), EnderIONetworkSum.sum(heatOutputs), EnderIONetworkSum.sum(coolingOutputs));
+        BlockPos networkId = network.conduits().stream().min(BlockPos::compareTo).orElse(null);
+
+        return new CacheEntry(level.getGameTime(), EnderIONetworkSum.sum(heatOutputs), EnderIONetworkSum.sum(coolingOutputs), networkId);
     }
 
-    private record CacheEntry(long computedAtTick, double heatSum, double coolingSum) {
+    private record CacheEntry(long computedAtTick, double heatSum, double coolingSum, BlockPos networkId) {
     }
 }
