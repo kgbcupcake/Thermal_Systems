@@ -211,8 +211,10 @@ public final class ThermalConfig {
                 .define("enabled", true);
 
         ENDERIO_ENERGY_TO_HEAT_COEFFICIENT = builder
-                .comment("Scales the FE an Ender IO Stirling Generator currently holds in storage into Thermal Systems heat output.")
-                .defineInRange("energyToHeatCoefficient", 0.001, 0.0, Double.MAX_VALUE);
+                .comment("Heat/cooling output (C/s) an Ender IO Stirling Generator produces at a full energy buffer.",
+                        "Scales down linearly as the buffer fill fraction drops, so output stays bounded regardless",
+                        "of the generator's buffer capacity.")
+                .defineInRange("energyToHeatCoefficient", 60.0, 0.0, Double.MAX_VALUE);
 
         ENDERIO_OUTPUT_MULTIPLIER = builder
                 .comment("Direct intensity knob applied on top of energyToHeatCoefficient to scale the final Ender IO heat/cooling output hotter or colder, with no pretense of physical accuracy.")

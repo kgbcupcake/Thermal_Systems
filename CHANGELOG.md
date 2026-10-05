@@ -88,6 +88,14 @@ adheres to the version in [`gradle.properties`](gradle.properties).
   under both `heatNetworks` and `coolingNetworks` when only one side is actually producing anything;
   a source's inactive side (e.g. a heat/cool-mode-gated Ender IO generator sitting in Heat mode) no
   longer gets recorded into the opposite side's network set just because its capability resolved.
+- Ender IO Stirling Generator heat/cooling output is no longer wildly too high and no longer swings
+  up and down as the generator's buffer fills and drains. It previously scaled output by the
+  generator's raw stored FE, an unbounded amount that grows with buffer capacity; it now scales by
+  the buffer's fill fraction (0.0-1.0), so `energyToHeatCoefficient` (default raised from `0.001` to
+  `60.0`) is now the output at a full buffer, bounded and stable regardless of buffer size. A stored
+  amount reported above capacity is clamped to a full buffer instead of throwing, since a foreign
+  mod's `IEnergyStorage` isn't guaranteed to hold that invariant at every instant - the throw was
+  silently blanking the Ender IO conduit's entire Jade tooltip whenever it happened.
 
 ## [0.0.1-beta] - 2026-07-29
 

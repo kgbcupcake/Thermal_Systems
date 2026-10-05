@@ -21,9 +21,11 @@ class EnderIOBlockHeatSourceTest {
     private static final class StubEnergyStorage implements IEnergyStorage {
 
         private final int energyStored;
+        private final int maxEnergyStored;
 
-        StubEnergyStorage(int energyStored) {
+        StubEnergyStorage(int energyStored, int maxEnergyStored) {
             this.energyStored = energyStored;
+            this.maxEnergyStored = maxEnergyStored;
         }
 
         @Override
@@ -43,7 +45,7 @@ class EnderIOBlockHeatSourceTest {
 
         @Override
         public int getMaxEnergyStored() {
-            return Integer.MAX_VALUE;
+            return maxEnergyStored;
         }
 
         @Override
@@ -58,18 +60,30 @@ class EnderIOBlockHeatSourceTest {
     }
 
     @Test
-    void storedEnergyProducesHeatScaledByCoefficient() {
-        double coefficient = ThermalConfig.ENDERIO_ENERGY_TO_HEAT_COEFFICIENT.get();
-        StubEnergyStorage storage = new StubEnergyStorage(5000);
+    void storedEnergyProducesHeatScaledByFillFractionAndCoefficient() {
+        double coefficient = ThermalConfig.ENDERIO_ENERGY_TO_HEAT_COEFFICIENT.get()
+                * ThermalConfig.ENDERIO_OUTPUT_MULTIPLIER.get();
+        StubEnergyStorage storage = new StubEnergyStorage(5000, 10000);
 
         double heatOutput = EnderIOBlockHeatSource.convert(storage);
 
-        assertEquals(5000 * coefficient, heatOutput, 1e-9);
+        assertEquals(0.5 * coefficient, heatOutput, 1e-9);
+    }
+
+    @Test
+    void fullStorageProducesHeatEqualToCoefficient() {
+        double coefficient = ThermalConfig.ENDERIO_ENERGY_TO_HEAT_COEFFICIENT.get()
+                * ThermalConfig.ENDERIO_OUTPUT_MULTIPLIER.get();
+        StubEnergyStorage storage = new StubEnergyStorage(10000, 10000);
+
+        double heatOutput = EnderIOBlockHeatSource.convert(storage);
+
+        assertEquals(coefficient, heatOutput, 1e-9);
     }
 
     @Test
     void emptyStorageProducesNoHeat() {
-        StubEnergyStorage storage = new StubEnergyStorage(0);
+        StubEnergyStorage storage = new StubEnergyStorage(0, 10000);
 
         double heatOutput = EnderIOBlockHeatSource.convert(storage);
 
