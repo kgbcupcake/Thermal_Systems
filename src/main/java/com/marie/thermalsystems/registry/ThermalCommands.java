@@ -1,9 +1,11 @@
 package com.marie.thermalsystems.registry;
 
 import com.marie.thermalsystems.ThermalSystemsMod;
+import com.marie.thermalsystems.api.ThermalSystemsAPI;
 import com.marie.thermalsystems.climate.ClimateManager;
 import com.marie.thermalsystems.heating.HeatSource;
 import com.marie.thermalsystems.zone.ClimateZone;
+import com.marie.thermalsystems.zone.ZoneSourceScanner;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -12,6 +14,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -66,6 +69,12 @@ public final class ThermalCommands {
                                         .then(Commands.argument("name", StringArgumentType.word())
                                                 .executes(context -> clearBounds(
                                                         context.getSource(),
+                                                        StringArgumentType.getString(context, "name")))))
+                                .then(Commands.literal("delete")
+                                        .requires(source -> source.hasPermission(2))
+                                        .then(Commands.argument("name", StringArgumentType.word())
+                                                .executes(context -> deleteZone(
+                                                        context.getSource(),
                                                         StringArgumentType.getString(context, "name"))))))
                         .then(Commands.literal("source")
                                 .then(Commands.literal("add")
@@ -80,7 +89,10 @@ public final class ThermalCommands {
     private static int createZone(CommandSourceStack source, String name, double targetTemp) {
         ResourceKey<Level> level = source.getLevel().dimension();
         try {
-            ClimateManager.get().createZone(level, name, targetTemp);
+            ClimateZone zone = ClimateManager.get().createZone(level, name, targetTemp);
+            if (source.getPlayer() != null) {
+                zone.setOwner(source.getPlayer().getUUID());
+            }
         } catch (IllegalArgumentException e) {
             source.sendFailure(Component.literal(e.getMessage()));
             return 0;
@@ -99,7 +111,23 @@ public final class ThermalCommands {
         }
 
         zone.get().setBounds(new BlockPos(x1, y1, z1), new BlockPos(x2, y2, z2));
+        ZoneSourceScanner.invalidate(zone.get().getId());
         source.sendSuccess(() -> Component.literal("Set bounds for zone '" + zoneName + "'."), true);
+        return 1;
+    }
+
+    private static int deleteZone(CommandSourceStack source, String zoneName) {
+        ServerLevel level = source.getLevel();
+        Optional<ClimateZone> zone = ClimateManager.get().getZoneByName(level.dimension(), zoneName);
+        if (zone.isEmpty()) {
+            source.sendFailure(Component.literal("No climate zone named '" + zoneName + "' exists."));
+            return 0;
+        }
+
+        ZoneSourceScanner.forget(level, zone.get());
+        ThermalSystemsAPI.unbindAllForZone(level, zone.get().getId());
+        ClimateManager.get().removeZone(level.dimension(), zone.get().getId());
+        source.sendSuccess(() -> Component.literal("Deleted climate zone '" + zoneName + "'."), true);
         return 1;
     }
 

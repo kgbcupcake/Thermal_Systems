@@ -25,6 +25,18 @@ public class ZoneRegistry {
                 .put(zone.getId(), zone);
     }
 
+    public Optional<ClimateZone> remove(ResourceKey<Level> level, UUID id) {
+        Map<UUID, ClimateZone> zones = zonesByLevel.get(level);
+        if (zones == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(zones.remove(id));
+    }
+
+    public void clear() {
+        zonesByLevel.clear();
+    }
+
     public Optional<ClimateZone> get(ResourceKey<Level> level, UUID id) {
         Map<UUID, ClimateZone> zones = zonesByLevel.get(level);
         if (zones == null) {

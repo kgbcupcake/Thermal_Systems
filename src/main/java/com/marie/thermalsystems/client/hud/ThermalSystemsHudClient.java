@@ -1,5 +1,6 @@
 package com.marie.thermalsystems.client.hud;
 
+import com.marie.thermalsystems.client.config.hub.ThermalHubScreen;
 import dev.marie.framework.ui.edit.EditModeController;
 import net.minecraft.client.Minecraft;
 import net.neoforged.bus.api.IEventBus;
@@ -11,8 +12,7 @@ import net.neoforged.neoforge.common.NeoForge;
  * Client-only entry point for the persistent Thermal Systems control panel HUD - wires
  * {@link ThermalSystemsHudKeys#TOGGLE_PANEL} and opens {@link ThermalSystemsControlPanel} in a
  * {@link EditModeController} overlay when pressed. Called unconditionally from
- * {@code ThermalSystemsClient}'s constructor - unlike {@code EnderIOClientIntegration}, this isn't
- * gated behind any foreign mod's presence.
+ * {@code ThermalSystemsClient}'s constructor - not gated behind any foreign mod's presence.
  *
  * <p>Minecraft has no on-screen mouse cursor during ordinary gameplay (no {@code Screen} open), so
  * there is no way to click or drag a HUD element without one - {@link EditModeController} is the
@@ -51,12 +51,17 @@ public final class ThermalSystemsHudClient {
         while (ThermalSystemsHudKeys.TOGGLE_PANEL.consumeClick()) {
             editModeController().enter();
         }
+        if (ThermalSystemsHudKeys.OPEN_CONFIG.consumeClick()) {
+            while (ThermalSystemsHudKeys.OPEN_CONFIG.consumeClick()) {
+                // drain repeats so one press opens one screen
+            }
+            mc.setScreen(ThermalHubScreen.create(null));
+        }
     }
 
     /**
      * Lazily built on first use - {@link ThermalSystemsControlPanel} and the controller wrapping it
-     * have no natural earlier construction point (no screen of their own, unlike
-     * {@code EnderIOClientIntegration#onScreenOpened}), so they live here as statics instead, same
+     * have no natural earlier construction point (no screen of their own), so they live here as statics instead, same
      * as {@code NourishedHUD#marieEditModeController}.
      */
     private static EditModeController editModeController() {

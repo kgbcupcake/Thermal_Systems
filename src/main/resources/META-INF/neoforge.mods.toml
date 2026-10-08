@@ -72,3 +72,17 @@ logoFile ="thermal_icon.png"
     versionRange = "${tough_as_nails_version_range}"
     ordering = "NONE"
     side = "BOTH"
+
+[[dependencies.${mod_id}]]
+    modId = "eclipticseasons"
+    type = "optional"
+    versionRange = "${ecliptic_seasons_version_range}"
+    ordering = "NONE"
+    side = "BOTH"
+
+[[dependencies.${mod_id}]]
+    modId = "sereneseasons"
+    type = "optional"
+    versionRange = "${serene_seasons_version_range}"
+    ordering = "NONE"
+    side = "BOTH"

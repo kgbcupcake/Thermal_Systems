@@ -2,6 +2,8 @@ package com.marie.thermalsystems.integration.coldsweat;
 
 import com.marie.thermalsystems.api.bridge.ITemperatureBridge;
 import com.marie.thermalsystems.data.config.ThermalConfig;
+import com.marie.thermalsystems.zone.ClimateZone;
+import com.marie.thermalsystems.zone.ZoneSpatialIndex;
 import com.momosoftworks.coldsweat.api.temperature.modifier.SimpleTempModifier;
 import com.momosoftworks.coldsweat.api.util.Temperature;
 import com.momosoftworks.coldsweat.api.util.placement.Matcher;
@@ -10,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -29,6 +32,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * {@link SimpleTempModifier} with {@link SimpleTempModifier.Operation#ADD}
  * applies an unconditional {@code temp + value}, so a source works in both
  * directions regardless of the player's current temperature.
+ *
+ * <p><b>Inside a zone</b> the modifier switches to
+ * {@link SimpleTempModifier.Operation#SET} with the zone's own temperature,
+ * converted to Cold Sweat's units by {@link Temperature#convert}. Cold Sweat's
+ * world temperature already includes the biome, depth and season, so adding
+ * a room's offset on top of it left a heated basement freezing in winter; the
+ * room is the player's environment, so it replaces that value instead. The
+ * modifier is first added at the end of the WORLD list (and replaced in place
+ * after that), so it wins over Cold Sweat's own world modifiers.
  *
  * <p><b>Scale conversion:</b> {@code ambientTemperatureCelsius} is converted
  * to a delta relative to {@link ThermalConfig#COLDSWEAT_TEMPERATURE_OFFSET}
@@ -79,15 +91,23 @@ public final class ColdSweatThermalBridge implements ITemperatureBridge {
             total += contribution;
         }
 
-        if (ThermalConfig.LOGGING_ENABLED.get()) {
+        Optional<ClimateZone> zone = ZoneSpatialIndex.resolve(player.level(), player.blockPosition());
+
+        if (ThermalConfig.LOGGING_ENABLED.get() && LOGGER.isDebugEnabled()) {
             Double previous = LAST_LOGGED_DELTA.put(sourceId, delta);
             if (previous == null || previous.doubleValue() != delta) {
-                LOGGER.info("[MTS] ColdSweatThermalBridge.applyAmbientTemperature player={} ambientC={} delta={} sourceId={} total={}",
-                        player.getGameProfile().getName(), ambientTemperatureCelsius, delta, sourceId, total);
+                LOGGER.debug("[MTS] ColdSweatThermalBridge.applyAmbientTemperature player={} ambientC={} delta={} sourceId={} total={} zone={}",
+                        player.getGameProfile().getName(), ambientTemperatureCelsius, delta, sourceId, total,
+                        zone.map(ClimateZone::getName).orElse("none"));
             }
         }
 
-        applyTemperature(player, total);
+        if (zone.isPresent()) {
+            double roomTemperature = Temperature.convert(zone.get().getCurrentTemp(), Temperature.Units.C, Temperature.Units.MC, true);
+            applyTemperature(player, new SimpleTempModifier(roomTemperature, SimpleTempModifier.Operation.SET));
+        } else {
+            applyTemperature(player, new SimpleTempModifier(total, SimpleTempModifier.Operation.ADD));
+        }
     }
 
     static void clearPlayer(UUID playerId) {
@@ -96,10 +116,9 @@ public final class ColdSweatThermalBridge implements ITemperatureBridge {
 
     private static final AtomicBoolean APPLY_WARNED_ONCE = new AtomicBoolean(false);
 
-    private static void applyTemperature(ServerPlayer player, double total) {
+    private static void applyTemperature(ServerPlayer player, SimpleTempModifier modifier) {
         try {
-            Temperature.replaceOrAddModifier(player, new SimpleTempModifier(total, SimpleTempModifier.Operation.ADD),
-                    Temperature.Trait.WORLD, Matcher.SAME_CLASS);
+            Temperature.replaceOrAddModifier(player, modifier, Temperature.Trait.WORLD, Matcher.SAME_CLASS);
         } catch (Exception e) {
             if (ThermalConfig.LOGGING_ENABLED.get() || APPLY_WARNED_ONCE.compareAndSet(false, true)) {
                 LOGGER.warn("[MTS] ColdSweatThermalBridge.applyTemperature caught exception from Cold Sweat for player={}",

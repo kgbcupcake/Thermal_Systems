@@ -5,6 +5,8 @@ import com.marie.thermalsystems.data.config.ThermalConfig;
 import com.marie.thermalsystems.zone.ClimateZone;
 import com.marie.thermalsystems.zone.ZoneRegistry;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 
 import java.util.ArrayList;
@@ -64,9 +66,23 @@ public class ClimateManager {
         }
 
         ClimateZone zone = new ClimateZone(
-                UUID.randomUUID(), name, ThermalConfig.DEFAULT_AMBIENT_TEMPERATURE.get(), targetTemp, ClimateMode.OFF);
+                UUID.randomUUID(), name, ThermalConfig.DEFAULT_AMBIENT_TEMPERATURE.get(), targetTemp, ClimateMode.AUTO);
         registry.add(level, zone);
         return zone;
+    }
+
+    /** Re-registers a zone loaded from disk, keeping its id. Replaces any zone already registered under that id. */
+    public void restoreZone(ResourceKey<Level> level, ClimateZone zone) {
+        registry.add(level, zone);
+    }
+
+    public Optional<ClimateZone> removeZone(ResourceKey<Level> level, UUID id) {
+        return registry.remove(level, id);
+    }
+
+    /** Drops every zone in every level - called once the server has stopped and saved. */
+    public void clear() {
+        registry.clear();
     }
 
     public Optional<ClimateZone> getZoneByName(ResourceKey<Level> level, String name) {
@@ -88,11 +104,13 @@ public class ClimateManager {
     /**
      * Advances every zone in every level by {@code deltaTime} seconds.
      */
-    public List<ZoneAdvanceResult> advanceAll(double deltaTime) {
+    public List<ZoneAdvanceResult> advanceAll(double deltaTime, MinecraftServer server) {
         List<ZoneAdvanceResult> results = new ArrayList<>();
-        for (Map<UUID, ClimateZone> zones : registry.getAllZones().values()) {
-            for (ClimateZone zone : zones.values()) {
-                double totalHeatOutput = engine.advance(zone, deltaTime);
+        for (Map.Entry<ResourceKey<Level>, Map<UUID, ClimateZone>> entry : registry.getAllZones().entrySet()) {
+            ServerLevel level = server.getLevel(entry.getKey());
+            for (ClimateZone zone : entry.getValue().values()) {
+                double ambient = AmbientTemperature.forZone(level, zone);
+                double totalHeatOutput = engine.advance(zone, deltaTime, ambient);
                 results.add(new ZoneAdvanceResult(zone, totalHeatOutput));
             }
         }

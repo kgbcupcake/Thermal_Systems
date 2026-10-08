@@ -1,18 +1,23 @@
 package com.marie.thermalsystems;
 
 import com.marie.thermalsystems.client.config.ThermalContextRegistration;
-import com.marie.thermalsystems.client.config.ThermalSystemsConfigScreen;
+import com.marie.thermalsystems.client.config.hub.ThermalHubScreen;
+import com.marie.thermalsystems.data.config.ThermalClientConfig;
 import com.marie.thermalsystems.data.config.ThermalConfig;
+import com.marie.thermalsystems.data.config.sync.ThermalConfigSync;
 import com.marie.thermalsystems.hover.ThermalHoverProvider;
 import com.marie.thermalsystems.hud.ThermalSystemsHud;
 import com.marie.thermalsystems.integration.coldsweat.ColdSweatIntegration;
+import com.marie.thermalsystems.integration.eclipticseasons.EclipticSeasonsIntegration;
 import com.marie.thermalsystems.integration.enderio.EnderIOIntegration;
-import com.marie.thermalsystems.integration.enderio.EnderIOThermalModeAttachment;
 import com.marie.thermalsystems.integration.lso.LSOIntegration;
 import com.marie.thermalsystems.integration.mekanism.MekanismIntegration;
 import com.marie.thermalsystems.integration.pneumaticcraft.PneumaticCraftIntegration;
+import com.marie.thermalsystems.integration.sereneseasons.SereneSeasonsIntegration;
 import com.marie.thermalsystems.integration.toughasnails.ToughAsNailsIntegration;
+import com.marie.thermalsystems.network.ThermalNetwork;
 import com.marie.thermalsystems.radiation.SourceRadiationTickHandler;
+import com.marie.thermalsystems.registry.ThermalRegistries;
 import net.neoforged.neoforge.common.NeoForge;
 import dev.marie.framework.api.marieapi.MarieAPI;
 import dev.marie.framework.core.MarieBootstrap;
@@ -27,9 +32,11 @@ import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 
 /**
- * Entry point for Marie's Thermal Systems. This mod ships no blocks or items
- * of its own - every heat/cooling source is a real block belonging to
- * another mod, hooked via capability registration. Event listeners
+ * Entry point for Marie's Thermal Systems. Every heat/cooling source is a
+ * real block belonging to another mod, hooked via capability registration;
+ * the only content this mod ships itself is the zone and thermostat tooling
+ * in {@link ThermalRegistries} (Zone Gadget, thermostat tablet, wall
+ * thermostat), whose payloads {@link ThermalNetwork} handles. Event listeners
  * self-register via {@code @EventBusSubscriber}
  * ({@link com.marie.thermalsystems.climate.ClimateTickHandler},
  * {@link com.marie.thermalsystems.registry.ThermalCommands}), so this class
@@ -63,19 +70,22 @@ public class ThermalSystemsMod {
 
     public ThermalSystemsMod(IEventBus modEventBus, ModContainer modContainer) {
         MarieBootstrap.attachFrameworkServices(modEventBus);
-        EnderIOThermalModeAttachment.register(modEventBus);
         MarieAPI.registerBlockHoverProvider(new ThermalHoverProvider());
         ThermalContextRegistration.register(MOD_ID);
         ThermalSystemsHud.init(modEventBus);
+        ThermalRegistries.register(modEventBus);
+        ThermalNetwork.init(modEventBus);
 
         SourceRadiationTickHandler radiationHandler = new SourceRadiationTickHandler();
         NeoForge.EVENT_BUS.register(radiationHandler);
+        ThermalConfigSync.init(modEventBus, radiationHandler);
 
         modContainer.registerConfig(ModConfig.Type.COMMON, ThermalConfig.SPEC);
 
         if (FMLEnvironment.dist == Dist.CLIENT) {
+            modContainer.registerConfig(ModConfig.Type.CLIENT, ThermalClientConfig.SPEC);
             modContainer.registerExtensionPoint(IConfigScreenFactory.class,
-                    (minecraft, parent) -> ThermalSystemsConfigScreen.create(parent));
+                    (minecraft, parent) -> ThermalHubScreen.create(parent));
         }
 
         modEventBus.addListener((ModConfigEvent.Loading event) -> {
@@ -109,6 +119,14 @@ public class ThermalSystemsMod {
 
         if (ModList.get().isLoaded(ToughAsNailsIntegration.TOUGHASNAILS_MOD_ID)) {
             ToughAsNailsIntegration.init(modEventBus, radiationHandler);
+        }
+
+        // Ecliptic first: when both season mods are installed, its solar-term climate wins.
+        if (ModList.get().isLoaded(EclipticSeasonsIntegration.MOD_ID)) {
+            EclipticSeasonsIntegration.init();
+        }
+        if (ModList.get().isLoaded(SereneSeasonsIntegration.MOD_ID)) {
+            SereneSeasonsIntegration.init();
         }
     }
 }

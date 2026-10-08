@@ -14,9 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Persistent, always-available control panel HUD - independent of any machine screen, unlike
- * {@code HeatCoolToggleComponent}, which only exists while a Stirling Generator's own container is
- * open. Rendered as an app list: a title bar ("Thermal Systems") followed by one row per
+ * Persistent, always-available control panel HUD - independent of any machine screen. Rendered as
+ * an app list: a title bar ("Thermal Systems") followed by one row per
  * {@link ControlPanelRow} in {@link #rows} - currently just {@link SystemEnabledRow}, but the row
  * list (not a single hardcoded row) is what a second app (e.g. a per-integration toggle) would be
  * added to.
@@ -28,15 +27,13 @@ import java.util.List;
  * DraggableResizable}'s own class javadoc: a field any {@link MarieComponent} holds for gesture
  * support, not a base class to inherit from) for repositioning; {@link #constraint()} is
  * {@link Constraint#fixed}, so resize gestures are geometrically possible but clamped inert -
- * the panel's height is derived from {@link #rows}' size, not a user preference, mirroring how
- * {@code HeatCoolToggleComponent} also only ever supports repositioning, not resizing.
+ * the panel's height is derived from {@link #rows}' size, not a user preference.
  *
  * <p>Row toggle boxes are hit-tested first in {@link #mouseClicked}; anything else within the
  * panel's bounds falls through to {@link #drag}, since {@link DraggableResizable#mouseClicked}
  * treats a click anywhere in the supplied bounds (not just its resize handle) as the start of a
  * whole-panel drag. That ordering is what lets clicking a toggle and dragging the panel body
- * coexist without a separate "reposition mode" flag like {@code EnderIOClientIntegration} needs -
- * there, the whole component's bounds were the click target, leaving nothing to fall through to.
+ * coexist without a separate "reposition mode" flag.
  */
 final class ThermalSystemsControlPanel implements MarieComponent {
 
@@ -56,7 +53,7 @@ final class ThermalSystemsControlPanel implements MarieComponent {
     private static final int ROW_ALT_BG_COLOR = 0xFF242424;
     private static final int LABEL_TEXT_COLOR = 0xFFDDDDDD;
 
-    /** Matches {@code HeatCoolToggleComponent}'s HEAT/COOL palette shape: one active, one inactive half. */
+    /** Split-box palette: one active, one inactive half. */
     private static final int ON_ACTIVE_COLOR = 0xFF339944;
     private static final int ON_INACTIVE_COLOR = 0xFF223322;
     private static final int OFF_ACTIVE_COLOR = 0xFFCC4433;
@@ -118,7 +115,7 @@ final class ThermalSystemsControlPanel implements MarieComponent {
         context.drawBorder(bounds.x(), bounds.y(), bounds.width(), bounds.height(), 1, TOGGLE_BORDER_COLOR);
     }
 
-    /** Split ON/OFF box - deliberately the same two-halves-plus-border-plus-text shape as {@code HeatCoolToggleComponent}. */
+    /** Split ON/OFF box: two halves plus border plus text. */
     private void renderToggle(RenderContext context, Bounds bounds, boolean on) {
         int onWidth = bounds.width() / 2;
         int offWidth = bounds.width() - onWidth;

@@ -2,6 +2,8 @@ package com.marie.thermalsystems.integration.toughasnails;
 
 import com.marie.thermalsystems.api.bridge.ITemperatureBridge;
 import com.marie.thermalsystems.data.config.ThermalConfig;
+import com.marie.thermalsystems.zone.ClimateZone;
+import com.marie.thermalsystems.zone.ZoneSpatialIndex;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import org.slf4j.Logger;
@@ -9,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import toughasnails.api.temperature.TemperatureLevel;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -65,10 +68,10 @@ public final class ToughAsNailsBridge implements ITemperatureBridge {
         double delta = ambientTemperatureCelsius - ThermalConfig.DEFAULT_AMBIENT_TEMPERATURE.get();
         contributions.computeIfAbsent(player.getUUID(), id -> new ConcurrentHashMap<>()).put(sourceId, delta);
 
-        if (ThermalConfig.LOGGING_ENABLED.get()) {
+        if (ThermalConfig.LOGGING_ENABLED.get() && LOGGER.isDebugEnabled()) {
             Double previous = lastLoggedDelta.put(sourceId, delta);
             if (previous == null || previous.doubleValue() != delta) {
-                LOGGER.info("[MTS] ToughAsNailsBridge.applyAmbientTemperature player={} ambientC={} delta={} sourceId={} totalDelta={}",
+                LOGGER.debug("[MTS] ToughAsNailsBridge.applyAmbientTemperature player={} ambientC={} delta={} sourceId={} totalDelta={}",
                         player.getGameProfile().getName(), ambientTemperatureCelsius, delta, sourceId,
                         storedValue(player.getUUID()));
             }
@@ -80,15 +83,29 @@ public final class ToughAsNailsBridge implements ITemperatureBridge {
      * unregistered, so both enabled checks live here rather than only at
      * registration.
      *
-     * <p>Mirrors TAN's own armor modifier: a single source never pushes a
-     * player into an extreme ({@code HOT}/{@code ICY}) from outside it -
-     * that stays reserved for TAN's own environment. A player already at an
-     * extreme is still adjusted normally, so opposing heat or cooling can
-     * bring them back out.
+     * <p>Inside a zone the room replaces TAN's outdoor environment: the
+     * level comes straight from the zone's temperature, ignoring
+     * {@code current}, so a heated room is warm in winter no matter how cold
+     * TAN thinks the biome is. TAN applies player modifiers before items,
+     * armor and food, so those still adjust the result.
+     *
+     * <p>Outside a zone it mirrors TAN's own armor modifier: a single source
+     * never pushes a player into an extreme ({@code HOT}/{@code ICY}) from
+     * outside it - that stays reserved for TAN's own environment. A player
+     * already at an extreme is still adjusted normally, so opposing heat or
+     * cooling can bring them back out.
      */
     public TemperatureLevel modify(Player player, TemperatureLevel current) {
         if (!ThermalConfig.SYSTEM_ENABLED.get() || !ThermalConfig.TOUGHASNAILS_ENABLED.get()) {
             return current;
+        }
+
+        Optional<ClimateZone> zone = zoneAt(player);
+        if (zone.isPresent()) {
+            TemperatureLevel result = TemperatureLevel.NEUTRAL.increment(
+                    stepsFor(zone.get().getCurrentTemp() - ThermalConfig.DEFAULT_AMBIENT_TEMPERATURE.get()));
+            lastModify.put(player.getUUID(), new LastModify(current, result));
+            return result;
         }
 
         TemperatureLevel result = current;
@@ -125,6 +142,13 @@ public final class ToughAsNailsBridge implements ITemperatureBridge {
         return 0;
     }
 
+    private static Optional<ClimateZone> zoneAt(Player player) {
+        if (player.level().isClientSide()) {
+            return Optional.empty();
+        }
+        return ZoneSpatialIndex.resolve(player.level(), player.blockPosition());
+    }
+
     private double storedValue(UUID playerId) {
         Map<UUID, Double> perSource = contributions.get(playerId);
         if (perSource == null) {
@@ -146,7 +170,9 @@ public final class ToughAsNailsBridge implements ITemperatureBridge {
     String debugLine(ServerPlayer player) {
         double stored = storedValue(player.getUUID());
         LastModify last = lastModify.get(player.getUUID());
+        Optional<ClimateZone> zone = zoneAt(player);
         return "[TAN] " + player.getGameProfile().getName()
+                + (zone.isPresent() ? " zone=" + zone.get().getName() + "@" + zone.get().getCurrentTemp() + "C" : " zone=none")
                 + " stored=" + stored + "C"
                 + " steps=" + stepsFor(stored)
                 + " current=" + (last != null ? last.current() : "n/a")

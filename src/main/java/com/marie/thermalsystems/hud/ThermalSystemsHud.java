@@ -2,6 +2,7 @@ package com.marie.thermalsystems.hud;
 
 import com.marie.thermalsystems.ThermalSystemsMod;
 import com.marie.thermalsystems.data.config.ThermalConfig;
+import com.marie.thermalsystems.data.config.sync.ThermalConfigSync;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.IEventBus;
@@ -27,7 +28,6 @@ import org.slf4j.LoggerFactory;
 public final class ThermalSystemsHud {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ThermalSystemsHud.class);
-    private static final int REQUIRED_PERMISSION_LEVEL = 2;
 
     private ThermalSystemsHud() {
     }
@@ -45,7 +45,7 @@ public final class ThermalSystemsHud {
     private static void onSystemToggleRequest(SystemToggleRequestPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             ServerPlayer player = (ServerPlayer) context.player();
-            if (!player.hasPermissions(REQUIRED_PERMISSION_LEVEL)) {
+            if (!ThermalConfigSync.canEdit(player)) {
                 if (ThermalConfig.LOGGING_ENABLED.get()) {
                     LOGGER.info("[MTS] Rejected SYSTEM_ENABLED toggle from {} (insufficient permission)",
                             player.getGameProfile().getName());

@@ -1,6 +1,7 @@
 package com.marie.thermalsystems.controller;
 
 import com.marie.thermalsystems.ThermalSystemsMod;
+import com.marie.thermalsystems.climate.AmbientTemperature;
 import com.marie.thermalsystems.api.ThermalSystemsAPI;
 import com.marie.thermalsystems.api.bridge.ITemperatureBridge;
 import com.marie.thermalsystems.data.config.ThermalConfig;
@@ -21,8 +22,8 @@ import java.util.UUID;
 /**
  * Drives the consumer side of the bridge API. Once per
  * {@code playerBridgeInterval} server ticks, resolves every online player's
- * zone via {@link ZoneSpatialIndex}, falls back to
- * {@code defaultAmbientTemperature} if unresolved, and invokes every
+ * zone via {@link ZoneSpatialIndex}, falls back to the seasonal ambient
+ * temperature at the player if unresolved, and invokes every
  * registered {@link ITemperatureBridge}. Bridges themselves do nothing but
  * receive a number.
  */
@@ -69,11 +70,11 @@ public final class PlayerTemperatureBridgeHandler {
             return;
         }
 
-        double defaultAmbient = ThermalConfig.DEFAULT_AMBIENT_TEMPERATURE.get();
         for (ServerLevel level : event.getServer().getAllLevels()) {
             for (ServerPlayer player : level.players()) {
                 Optional<ClimateZone> zone = ZoneSpatialIndex.resolve(level, player.blockPosition());
-                double temperature = zone.map(ClimateZone::getCurrentTemp).orElse(defaultAmbient);
+                double temperature = zone.map(ClimateZone::getCurrentTemp)
+                        .orElseGet(() -> AmbientTemperature.at(level, player.blockPosition()));
                 for (ITemperatureBridge bridge : bridges) {
                     bridge.applyAmbientTemperature(player, temperature, SOURCE_ID);
                 }

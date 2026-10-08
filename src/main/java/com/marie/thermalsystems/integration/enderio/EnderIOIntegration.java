@@ -1,6 +1,5 @@
 package com.marie.thermalsystems.integration.enderio;
 
-import com.marie.thermalsystems.ThermalSystemsMod;
 import com.marie.thermalsystems.api.ThermalSystemsAPI;
 import com.marie.thermalsystems.api.cooling.CoolingSourceCapabilities;
 import com.marie.thermalsystems.api.heating.HeatSourceCapabilities;
@@ -10,12 +9,10 @@ import com.marie.thermalsystems.radiation.ActiveSourcePositions;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.marie.framework.api.marieapi.MarieAPI;
-import dev.marie.framework.network.GenericStateSyncPayload;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -38,14 +35,10 @@ import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.level.ChunkEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
-import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 
@@ -111,15 +104,8 @@ import java.util.Set;
  * no native cooling/heat-sink analog of its own - unlike Mekanism's
  * temperature-delta-driven heat handlers, converted energy has no inherent
  * heat-or-cool sign - so {@code COOLING_SOURCE} is registered here too, but
- * gated by an explicit {@link ThermalMode} per generator, persisted on the
- * generator's own block entity (see {@link EnderIOThermalModeAttachment})
- * rather than derived from any real machine state. That mode defaults to
- * {@code HEAT} and is switched either
- * by the {@link HeatCoolToggleComponent} overlay {@link EnderIOClientIntegration}
- * renders directly on the Stirling Generator's own screen (the primary
- * control surface, wired through {@code MarieAPI.registerGenericStateSyncHandler}
- * to {@link #onGenericStateSync} below) or, as a fallback, via the
- * {@code /thermal enderio setMode} command.
+ * gated by {@link ThermalConfig#ENDERIO_COOLING_MODE}, the Ender IO config
+ * page's Cooling Mode switch, rather than any real machine state.
  */
 public final class EnderIOIntegration {
 
@@ -171,75 +157,7 @@ public final class EnderIOIntegration {
         NeoForge.EVENT_BUS.addListener(BlockEvent.EntityPlaceEvent.class, EnderIOIntegration::onBlockPlaced);
         NeoForge.EVENT_BUS.addListener(BlockEvent.BreakEvent.class, EnderIOIntegration::onBlockBroken);
         NeoForge.EVENT_BUS.addListener(ServerTickEvent.Post.class, EnderIOIntegration::onServerTick);
-        MarieAPI.registerGenericStateSyncHandler(EnderIOIntegration::onGenericStateSync);
-        modEventBus.addListener(RegisterPayloadHandlersEvent.class, EnderIOIntegration::onRegisterPayloadHandlers);
         MarieAPI.registerBlockHoverProvider(new EnderIONetworkHoverProvider());
-    }
-
-    /**
-     * Registers both legs of the mode query: {@link EnderIOModeRequestPayload}
-     * (client-to-server) and {@link EnderIOModeResponsePayload}
-     * (server-to-client). The response must be declared here, on every
-     * physical side, or a dedicated server's channel list won't match the
-     * client's and the handshake fails. Its handler is only ever invoked on
-     * the client; the lambda body resolves {@link EnderIOClientIntegration}
-     * lazily on first call, so a dedicated server never loads that class.
-     */
-    private static void onRegisterPayloadHandlers(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(ThermalSystemsMod.MOD_ID).versioned("1");
-        registrar.playToServer(EnderIOModeRequestPayload.TYPE, EnderIOModeRequestPayload.STREAM_CODEC,
-                EnderIOIntegration::onModeRequest);
-        registrar.playToClient(EnderIOModeResponsePayload.TYPE, EnderIOModeResponsePayload.STREAM_CODEC,
-                (payload, context) -> EnderIOClientIntegration.onModeResponse(payload, context));
-    }
-
-    /**
-     * Replies with the requested position's current {@link ThermalMode} via
-     * {@link IPayloadContext#reply}, but only once {@link #isSourceBlock}
-     * confirms the position is actually a Stirling Generator - a client
-     * could otherwise ask about an arbitrary position.
-     */
-    private static void onModeRequest(EnderIOModeRequestPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            Level level = context.player().level();
-            BlockPos pos = payload.pos();
-            if (!isSourceBlock(level, pos)) {
-                return;
-            }
-            BlockEntity blockEntity = level.getBlockEntity(pos);
-            ThermalMode mode = EnderIOThermalModeAttachment.get(blockEntity);
-            context.reply(new EnderIOModeResponsePayload(pos, mode.name()));
-        });
-    }
-
-    /**
-     * Server-side handler for {@link HeatCoolToggleComponent}'s sync packets
-     * - the primary control surface for a generator's {@link ThermalMode},
-     * replacing {@code /thermal enderio setMode} (still a valid fallback,
-     * see {@link #setMode}). The generic sync channel is shared across every
-     * mod that uses it, so {@code payload.pos()} is re-validated against
-     * {@link #isSourceBlock} here rather than trusted - a different mod's
-     * unrelated use of the same channel must never be mistaken for a mode
-     * change.
-     */
-    private static void onGenericStateSync(ServerPlayer player, GenericStateSyncPayload payload) {
-        CompoundTag data = payload.data();
-        if (!data.contains("mode")) {
-            return;
-        }
-        Level level = player.level();
-        BlockPos pos = payload.pos();
-        if (!isSourceBlock(level, pos)) {
-            return;
-        }
-        ThermalMode mode;
-        try {
-            mode = ThermalMode.valueOf(data.getString("mode"));
-        } catch (IllegalArgumentException e) {
-            return;
-        }
-        BlockEntity blockEntity = level.getBlockEntity(pos);
-        EnderIOThermalModeAttachment.set(blockEntity, mode);
     }
 
     private static void onServerStopping(ServerStoppingEvent event) {
@@ -460,12 +378,7 @@ public final class EnderIOIntegration {
                                                         context.getSource(),
                                                         StringArgumentType.getString(context, "zoneName")))))
                                 .then(Commands.literal("unbind")
-                                        .executes(context -> unbind(context.getSource())))
-                                .then(Commands.literal("setMode")
-                                        .then(Commands.argument("mode", StringArgumentType.word())
-                                                .executes(context -> setMode(
-                                                        context.getSource(),
-                                                        StringArgumentType.getString(context, "mode")))))));
+                                        .executes(context -> unbind(context.getSource())))));
     }
 
     private static int bind(CommandSourceStack source, String zoneName) throws CommandSyntaxException {
@@ -523,39 +436,6 @@ public final class EnderIOIntegration {
         ThermalSystemsAPI.unbindCoolingSource(level, pos);
 
         source.sendSuccess(() -> Component.literal("Unbound Ender IO conduit from its zone."), true);
-        return 1;
-    }
-
-    /**
-     * Fallback control for testing/edge cases: sets the looked-at Stirling
-     * Generator's {@link ThermalMode} directly. Superseded by the
-     * {@link HeatCoolToggleComponent} overlay {@link EnderIOClientIntegration}
-     * renders on the generator's own screen, which is now the primary,
-     * player-facing control surface - don't build anything further around
-     * this command as though it were the intended interface.
-     */
-    private static int setMode(CommandSourceStack source, String modeArgument) throws CommandSyntaxException {
-        Optional<BlockPos> targeted = lookedAtBlock(source.getPlayerOrException());
-        Level level = source.getLevel();
-        if (targeted.isEmpty() || !isSourceBlock(level, targeted.get())) {
-            source.sendFailure(Component.literal("You are not looking at an Ender IO Stirling Generator."));
-            return 0;
-        }
-        BlockPos pos = targeted.get();
-
-        ThermalMode mode;
-        try {
-            mode = ThermalMode.valueOf(modeArgument.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            source.sendFailure(Component.literal("Mode must be 'heat' or 'cool'."));
-            return 0;
-        }
-
-        BlockEntity blockEntity = level.getBlockEntity(pos);
-        EnderIOThermalModeAttachment.set(blockEntity, mode);
-
-        source.sendSuccess(() -> Component.literal(
-                "Set Ender IO Stirling Generator mode to " + mode.name().toLowerCase(Locale.ROOT) + "."), true);
         return 1;
     }
 
