@@ -54,6 +54,20 @@ public final class ZoneSourceScanner {
         FULLY_SCANNED.clear();
     }
 
+    /**
+     * Forces the zone's next scan to walk its whole expanded volume again instead of only the
+     * shell - call whenever its bounds change, or sources inside newly covered space are never found.
+     */
+    public static void invalidate(UUID zoneId) {
+        FULLY_SCANNED.remove(zoneId);
+    }
+
+    /** Unbinds every source this scanner bound to {@code zone} and forgets it - call before deleting a zone. */
+    public static void forget(ServerLevel level, ClimateZone zone) {
+        unbindAll(level, zone);
+        FULLY_SCANNED.remove(zone.getId());
+    }
+
     public static void scan(ServerLevel level, ClimateZone zone, int radius) {
         if (!zone.hasBounds()) {
             unbindAll(level, zone);

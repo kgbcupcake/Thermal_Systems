@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "thermalsystems:block/wall_thermostat" },
+    "facing=east": { "model": "thermalsystems:block/wall_thermostat", "y": 90 },
+    "facing=south": { "model": "thermalsystems:block/wall_thermostat", "y": 180 },
+    "facing=west": { "model": "thermalsystems:block/wall_thermostat", "y": 270 }
+  }
+}

@@ -42,11 +42,11 @@ public final class ClimateTickHandler {
         tickCounter = 0;
 
         double deltaTime = interval / (double) TICKS_PER_SECOND;
-        var results = ClimateManager.get().advanceAll(deltaTime);
+        var results = ClimateManager.get().advanceAll(deltaTime, event.getServer());
 
-        if (ThermalConfig.LOGGING_ENABLED.get()) {
+        if (ThermalConfig.LOGGING_ENABLED.get() && LOGGER.isDebugEnabled()) {
             for (ZoneAdvanceResult result : results) {
-                LOGGER.info("[MTS] Zone={} Current={} Target={} Heat={}",
+                LOGGER.debug("[MTS] Zone={} Current={} Target={} Heat={}",
                         result.zone().getName(),
                         String.format("%.2f", result.zone().getCurrentTemp()),
                         String.format("%.2f", result.zone().getTargetTemp()),

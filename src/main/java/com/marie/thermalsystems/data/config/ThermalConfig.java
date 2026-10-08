@@ -34,6 +34,9 @@ public final class ThermalConfig {
 
     public static final ModConfigSpec.BooleanValue HOVER_TOOLTIPS_ENABLED;
 
+    public static final ModConfigSpec.IntValue MAX_ZONE_VOLUME;
+    public static final ModConfigSpec.IntValue MAX_ZONES_PER_PLAYER;
+
     public static final ModConfigSpec.BooleanValue PNEUMATICCRAFT_ENABLED;
     public static final ModConfigSpec.DoubleValue PNEUMATICCRAFT_REFERENCE_TEMPERATURE_KELVIN;
     public static final ModConfigSpec.DoubleValue PNEUMATICCRAFT_EXCHANGER_CONVERSION_COEFFICIENT;
@@ -44,6 +47,7 @@ public final class ThermalConfig {
     public static final ModConfigSpec.IntValue MEKANISM_NETWORK_RECOMPUTE_INTERVAL;
 
     public static final ModConfigSpec.BooleanValue ENDERIO_ENABLED;
+    public static final ModConfigSpec.BooleanValue ENDERIO_COOLING_MODE;
     public static final ModConfigSpec.DoubleValue ENDERIO_ENERGY_TO_HEAT_COEFFICIENT;
     public static final ModConfigSpec.DoubleValue ENDERIO_OUTPUT_MULTIPLIER;
     public static final ModConfigSpec.IntValue ENDERIO_NETWORK_RECOMPUTE_INTERVAL;
@@ -56,6 +60,8 @@ public final class ThermalConfig {
     public static final ModConfigSpec.DoubleValue COLDSWEAT_OUTPUT_SCALE;
 
     public static final ModConfigSpec.BooleanValue TOUGHASNAILS_ENABLED;
+    public static final ModConfigSpec.BooleanValue ECLIPTIC_SEASONS_ENABLED;
+    public static final ModConfigSpec.BooleanValue SERENE_SEASONS_ENABLED;
     public static final ModConfigSpec.DoubleValue TOUGHASNAILS_HEAT_ONE_STEP_THRESHOLD;
     public static final ModConfigSpec.DoubleValue TOUGHASNAILS_HEAT_TWO_STEP_THRESHOLD;
     public static final ModConfigSpec.DoubleValue TOUGHASNAILS_COOLING_ONE_STEP_THRESHOLD;
@@ -131,7 +137,8 @@ public final class ThermalConfig {
                 .defineInRange("playerBridgeInterval", 20, 1, Integer.MAX_VALUE);
 
         DEFAULT_AMBIENT_TEMPERATURE = builder
-                .comment("Temperature reported to bridges for a player not inside any bounded zone.")
+                .comment("Baseline air temperature, in Celsius. Season mods add their winter or summer shift on top",
+                        "of this. Zones drift back toward the result while idle, and a player outside every zone feels it.")
                 .defineInRange("defaultAmbientTemperature", 20.0, -Double.MAX_VALUE, Double.MAX_VALUE);
 
         SOURCE_BINDING_RADIUS = builder
@@ -161,6 +168,19 @@ public final class ThermalConfig {
         HOVER_TOOLTIPS_ENABLED = builder
                 .comment("Gates the integration network hover tooltips (Ender IO, Mekanism, PneumaticCraft).")
                 .define("hoverTooltipsEnabled", true);
+
+        builder.pop();
+
+        builder.push("zones");
+
+        MAX_ZONE_VOLUME = builder
+                .comment("Largest zone, in blocks, a non-operator may mark out with the Zone Gadget. A zone's first",
+                        "source scan walks its whole volume, so very large zones cost a noticeable one-off scan.")
+                .defineInRange("maxZoneVolume", 32768, 1, 16777216);
+
+        MAX_ZONES_PER_PLAYER = builder
+                .comment("Most zones a non-operator may own per dimension. 0 means unlimited.")
+                .defineInRange("maxZonesPerPlayer", 16, 0, 10000);
 
         builder.pop();
 
@@ -210,9 +230,16 @@ public final class ThermalConfig {
                         "actually installed - both must be true for the integration to activate.")
                 .define("enabled", true);
 
+        ENDERIO_COOLING_MODE = builder
+                .comment("Stirling Generators (and their conduit networks) inside a zone follow that zone's thermostat.",
+                        "This only decides what generators outside every zone do: true = cool nearby players, false = heat them.")
+                .define("coolingMode", false);
+
         ENDERIO_ENERGY_TO_HEAT_COEFFICIENT = builder
-                .comment("Scales the FE an Ender IO Stirling Generator currently holds in storage into Thermal Systems heat output.")
-                .defineInRange("energyToHeatCoefficient", 0.001, 0.0, Double.MAX_VALUE);
+                .comment("Heat/cooling output (C/s) an Ender IO Stirling Generator produces at a full energy buffer.",
+                        "Scales down linearly as the buffer fill fraction drops, so output stays bounded regardless",
+                        "of the generator's buffer capacity.")
+                .defineInRange("energyToHeatCoefficient", 60.0, 0.0, Double.MAX_VALUE);
 
         ENDERIO_OUTPUT_MULTIPLIER = builder
                 .comment("Direct intensity knob applied on top of energyToHeatCoefficient to scale the final Ender IO heat/cooling output hotter or colder, with no pretense of physical accuracy.")
@@ -251,12 +278,9 @@ public final class ThermalConfig {
                 .defineInRange("temperatureOffset", 20.0, -Double.MAX_VALUE, Double.MAX_VALUE);
 
         COLDSWEAT_OUTPUT_SCALE = builder
-                .comment("Scales the Celsius delta from temperatureOffset into the int strength WarmthTempModifier/",
-                        "FrigidnessTempModifier expect. Cold Sweat's own Hearth block (the reference for what",
-                        "'meaningfully warm' looks like) typically passes a strength of 0 or 1 - ThermalSourceTempModifier",
-                        "further multiplies that by ConfigSettings.THERMAL_SOURCE_STRENGTH (0.75 by default) against a",
-                        "MIN_TEMP/MAX_TEMP comfortable range that only spans about 1.2 units - so a strength of 1 is",
-                        "already a strong effect. The default here keeps a 10C delta at roughly strength 1.")
+                .comment("Scales the Celsius delta from temperatureOffset into Cold Sweat's own WORLD temperature",
+                        "units, which are small (its comfortable range is only about 1.2 units wide by default).",
+                        "The default here keeps a 10C delta at roughly 1.0 units.")
                 .defineInRange("outputScale", 0.1, 0.0, Double.MAX_VALUE);
 
         builder.pop();
@@ -291,6 +315,25 @@ public final class ThermalConfig {
                         "Thermal Systems lowers the player's Tough As Nails temperature by two levels. A player is",
                         "never pushed into ICY from outside it - the result stops at COLD.")
                 .defineInRange("coolingTwoStepThreshold", 15.0, 0.0, Double.MAX_VALUE);
+
+        builder.pop();
+
+        builder.push("eclipticseasons");
+
+        ECLIPTIC_SEASONS_ENABLED = builder
+                .comment("Adds Ecliptic Seasons' solar-term temperature onto Default Ambient Temperature.",
+                        "Does nothing when Ecliptic Seasons is not installed. Applies as soon as it is changed.")
+                .define("enabled", true);
+
+        builder.pop();
+
+        builder.push("sereneseasons");
+
+        SERENE_SEASONS_ENABLED = builder
+                .comment("Adds Serene Seasons' sub-season temperature onto Default Ambient Temperature.",
+                        "Does nothing when Serene Seasons is not installed, or when Ecliptic Seasons is already",
+                        "supplying the season. Applies as soon as it is changed.")
+                .define("enabled", true);
 
         builder.pop();
 

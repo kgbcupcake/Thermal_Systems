@@ -1,0 +1,22 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "front": "thermalsystems:block/wall_thermostat_front",
+    "side": "thermalsystems:block/wall_thermostat_side",
+    "particle": "thermalsystems:block/wall_thermostat_side"
+  },
+  "elements": [
+    {
+      "from": [2, 1, 14],
+      "to": [14, 15, 16],
+      "faces": {
+        "north": { "uv": [2, 1, 14, 15], "texture": "#front" },
+        "south": { "uv": [2, 1, 14, 15], "texture": "#side", "cullface": "south" },
+        "east": { "uv": [0, 1, 2, 15], "texture": "#side" },
+        "west": { "uv": [14, 1, 16, 15], "texture": "#side" },
+        "up": { "uv": [2, 14, 14, 16], "texture": "#side" },
+        "down": { "uv": [2, 0, 14, 2], "texture": "#side" }
+      }
+    }
+  ]
+}

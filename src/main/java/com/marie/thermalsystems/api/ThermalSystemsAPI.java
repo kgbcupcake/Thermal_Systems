@@ -32,9 +32,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 public final class ThermalSystemsAPI {
 
-    // TODO(future phase): invalidate bound-source entries when zone deletion is
-    // implemented - not reachable today since zone deletion doesn't exist yet
-    // (Phase 1 explicitly deferred it).
     private static final Map<ResourceKey<Level>, Map<BlockPos, BoundHeatSource>> BOUND_HEAT_SOURCES = new HashMap<>();
     private static final Map<ResourceKey<Level>, Map<BlockPos, BoundCoolingSource>> BOUND_COOLING_SOURCES = new HashMap<>();
     private static final List<ITemperatureBridge> BRIDGES = new CopyOnWriteArrayList<>();
@@ -138,6 +135,31 @@ public final class ThermalSystemsAPI {
         }
         ClimateManager.get().getZone(key, entry.zoneId())
                 .ifPresent(zone -> zone.removeCoolingSource(entry.source()));
+    }
+
+    /**
+     * Drops every heat/cooling binding pointing at {@code zoneId} in {@code level}. Called by
+     * Thermal Systems itself when a zone is deleted.
+     */
+    public static void unbindAllForZone(Level level, UUID zoneId) {
+        ResourceKey<Level> key = level.dimension();
+        Map<BlockPos, BoundHeatSource> heat = BOUND_HEAT_SOURCES.get(key);
+        if (heat != null) {
+            heat.values().removeIf(entry -> entry.zoneId().equals(zoneId));
+        }
+        Map<BlockPos, BoundCoolingSource> cooling = BOUND_COOLING_SOURCES.get(key);
+        if (cooling != null) {
+            cooling.values().removeIf(entry -> entry.zoneId().equals(zoneId));
+        }
+    }
+
+    /**
+     * Forgets every binding in every level. Called by Thermal Systems itself once the server has
+     * stopped, so a different world opened in the same session doesn't inherit stale positions.
+     */
+    public static void clearAllBindings() {
+        BOUND_HEAT_SOURCES.clear();
+        BOUND_COOLING_SOURCES.clear();
     }
 
     public static void registerTemperatureBridge(ITemperatureBridge bridge) {

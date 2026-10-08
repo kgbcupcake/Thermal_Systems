@@ -4,6 +4,7 @@ import com.marie.thermalsystems.api.heating.HeatSourceCapabilities;
 import com.marie.thermalsystems.api.heating.IHeatSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Adapts a foreign BlockEntity's capability-provided {@link IHeatSource} so
@@ -28,9 +29,21 @@ public class CapabilityHeatSource implements IHeatSource {
         return pos;
     }
 
+    /** The live capability at {@link #pos()}, or {@code null} if it's gone. */
+    @Nullable
+    public IHeatSource capability() {
+        return HeatSourceCapabilities.HEAT_SOURCE.getCapability(level, pos, null, null, null);
+    }
+
     @Override
     public double getHeatOutput() {
-        IHeatSource capability = HeatSourceCapabilities.HEAT_SOURCE.getCapability(level, pos, null, null, null);
+        IHeatSource capability = capability();
         return capability != null ? capability.getHeatOutput() : 0.0;
+    }
+
+    @Override
+    public Object getNetworkId() {
+        IHeatSource capability = capability();
+        return capability != null ? capability.getNetworkId() : null;
     }
 }

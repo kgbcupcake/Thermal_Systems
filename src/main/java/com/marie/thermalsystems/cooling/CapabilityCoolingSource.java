@@ -4,6 +4,7 @@ import com.marie.thermalsystems.api.cooling.CoolingSourceCapabilities;
 import com.marie.thermalsystems.api.cooling.ICoolingSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Mirror of {@link com.marie.thermalsystems.heating.CapabilityHeatSource}
@@ -23,9 +24,21 @@ public class CapabilityCoolingSource implements ICoolingSource {
         return pos;
     }
 
+    /** The live capability at {@link #pos()}, or {@code null} if it's gone. */
+    @Nullable
+    public ICoolingSource capability() {
+        return CoolingSourceCapabilities.COOLING_SOURCE.getCapability(level, pos, null, null, null);
+    }
+
     @Override
     public double getCoolingOutput() {
-        ICoolingSource capability = CoolingSourceCapabilities.COOLING_SOURCE.getCapability(level, pos, null, null, null);
+        ICoolingSource capability = capability();
         return capability != null ? capability.getCoolingOutput() : 0.0;
+    }
+
+    @Override
+    public Object getNetworkId() {
+        ICoolingSource capability = capability();
+        return capability != null ? capability.getNetworkId() : null;
     }
 }

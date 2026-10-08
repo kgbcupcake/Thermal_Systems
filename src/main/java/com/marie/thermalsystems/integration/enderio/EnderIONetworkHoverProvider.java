@@ -1,5 +1,6 @@
 package com.marie.thermalsystems.integration.enderio;
 
+import com.marie.thermalsystems.api.climate.IHeatPump;
 import com.marie.thermalsystems.api.heating.HeatSourceCapabilities;
 import com.marie.thermalsystems.api.heating.IHeatSource;
 import com.marie.thermalsystems.data.config.ThermalConfig;
@@ -42,26 +43,24 @@ public final class EnderIONetworkHoverProvider implements BlockHoverProvider {
         Set<BlockPos> boundary = EnderIONetworkDiscovery.discoverBoundary(pos, level, EnderIOIntegration.CONDUIT_BLOCK_ENTITY_TYPE);
 
         ListTag connected = new ListTag();
-        double totalHeat = 0.0;
         for (BlockPos boundaryPos : boundary) {
             IHeatSource heatSource = HeatSourceCapabilities.HEAT_SOURCE.getCapability(level, boundaryPos, null, null, null);
             if (heatSource == null) {
                 continue;
             }
-
-            double heat = heatSource.getHeatOutput();
-
             CompoundTag entry = new CompoundTag();
             entry.putString("name", displayName(level, boundaryPos));
-            entry.putDouble("heat", heat);
+            entry.putDouble("output", heatSource instanceof IHeatPump pump ? pump.getPumpOutput() : heatSource.getHeatOutput());
             connected.add(entry);
-
-            totalHeat += heat;
         }
 
+        EnderIONetworkPosition network = new EnderIONetworkPosition(level, pos);
         CompoundTag data = new CompoundTag();
         data.put("connected", connected);
-        data.putDouble("totalHeat", totalHeat);
+        data.putDouble("heat", network.getHeatOutput());
+        data.putDouble("cooling", network.getCoolingOutput());
+        data.putDouble("pump", network.getPumpOutput());
+        network.getControllingZone().ifPresent(zone -> data.putString("zone", zone.getName()));
         return data;
     }
 
@@ -80,11 +79,29 @@ public final class EnderIONetworkHoverProvider implements BlockHoverProvider {
             for (int i = 0; i < connected.size(); i++) {
                 CompoundTag entry = connected.getCompound(i);
                 lines.add(Component.literal(String.format(Locale.ROOT,
-                        "%s: %.2fC/s heat", entry.getString("name"), entry.getDouble("heat"))));
+                        "%s: %.2fC/s", entry.getString("name"), entry.getDouble("output"))));
             }
         }
 
-        lines.add(Component.literal(String.format(Locale.ROOT, "Network Total: %.2fC/s heat", data.getDouble("totalHeat"))));
+        double heat = data.getDouble("heat");
+        double cooling = data.getDouble("cooling");
+        String total;
+        if (heat > 0.0 && cooling > 0.0) {
+            total = String.format(Locale.ROOT, "Network: heating %.2fC/s, cooling %.2fC/s", heat, cooling);
+        } else if (heat > 0.0) {
+            total = String.format(Locale.ROOT, "Network: heating %.2fC/s", heat);
+        } else if (cooling > 0.0) {
+            total = String.format(Locale.ROOT, "Network: cooling %.2fC/s", cooling);
+        } else if (data.getDouble("pump") > 0.0) {
+            total = "Network: standby";
+        } else {
+            total = "Network: no output";
+        }
+        lines.add(Component.literal(total));
+        String zone = data.getString("zone");
+        lines.add(Component.literal(zone.isEmpty()
+                ? "Not in a zone - Ender IO Cooling Mode decides"
+                : "Controlled by zone: " + zone));
         return lines;
     }
 

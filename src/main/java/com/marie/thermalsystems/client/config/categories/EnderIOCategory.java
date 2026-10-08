@@ -14,11 +14,22 @@ public final class EnderIOCategory {
         ConfigCategory category = builder.getOrCreateCategory(Component.translatable("config.thermalsystems.category.enderio"));
 
         category.addEntry(
+                eb.startBooleanToggle(
+                                Component.translatable("config.thermalsystems.enderioCoolingMode"),
+                                ThermalConfig.ENDERIO_COOLING_MODE.get()
+                        )
+                        .setDefaultValue(false)
+                        .setTooltip(Component.translatable("config.thermalsystems.enderioCoolingMode.desc"))
+                        .setSaveConsumer(ThermalConfig.ENDERIO_COOLING_MODE::set)
+                        .build()
+        );
+
+        category.addEntry(
                 eb.startDoubleField(
                                 Component.translatable("config.thermalsystems.enderioEnergyToHeatCoefficient"),
                                 ThermalConfig.ENDERIO_ENERGY_TO_HEAT_COEFFICIENT.get()
                         )
-                        .setDefaultValue(0.001)
+                        .setDefaultValue(60.0)
                         .setMin(0.0)
                         .setTooltip(Component.translatable("config.thermalsystems.enderioEnergyToHeatCoefficient.desc"))
                         .setSaveConsumer(ThermalConfig.ENDERIO_ENERGY_TO_HEAT_COEFFICIENT::set)

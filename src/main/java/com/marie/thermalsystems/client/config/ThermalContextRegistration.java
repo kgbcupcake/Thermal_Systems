@@ -1,8 +1,11 @@
 package com.marie.thermalsystems.client.config;
 
+import com.marie.thermalsystems.client.config.hub.ThermalHubScreen;
 import dev.marie.framework.config.PresetRegistry.PresetValues;
 import dev.marie.framework.core.MarieContext;
 import net.minecraft.client.gui.screens.Screen;
+
+import java.util.Map;
 
 /**
  * Registers Thermal Systems' {@link MarieContext} with just enough wiring
@@ -18,9 +21,19 @@ import net.minecraft.client.gui.screens.Screen;
  * {@code MarieBootstrap.attachFrameworkServices(...)} call already made from
  * {@code ThermalSystemsMod}.
  *
+ * <p>Explicitly opts {@code tooltipValueResolver} out to an always-empty no-op rather than leaving
+ * {@link MarieContext.Builder}'s own default, which reads MariesLib's generic item-editor
+ * {@code SourceClassificationRegistry} for every value key <em>any</em> attached mod has registered
+ * (Thermal Systems' context registers none of its own, but that registry is shared across every
+ * MarieLib mod in the game — Nourished's "proteins" included). Without this, saving an override for
+ * some item through the generic item editor's own Values sliders — for any mod, on any item, even
+ * just while testing — silently resurfaces as a "thermal systems" tooltip contribution on that same
+ * item, merged in by {@code MarieTooltipHelper} right alongside whichever mod actually owns that
+ * value key. Thermal Systems has no nutrient/value system of its own to show there at all.
+ *
  * <p>Registering unconditionally (not gated behind {@code Dist.CLIENT}) is
  * safe: the client-only lambdas below (referencing {@link Screen} and
- * {@link ThermalSystemsConfigScreen}) are only ever invoked from client-side
+ * {@link ThermalHubScreen}) are only ever invoked from client-side
  * callers ({@code ClientScreenFactories}, or the {@code IConfigScreenFactory}
  * extension point registered separately under a dist check in
  * {@code ThermalSystemsMod}) - the same pattern Nourished's own
@@ -33,13 +46,14 @@ public final class ThermalContextRegistration {
     public static void register(String modId) {
         MarieContext.register(
                 MarieContext.builder(modId)
-                        .configScreenFactory(() -> ThermalSystemsConfigScreen.create(null))
+                        .configScreenFactory(() -> ThermalHubScreen.create(null))
                         .exportScreenFactory(parent -> new ThermalExportScreen((Screen) parent))
                         .importScreenFactory(parent -> new ThermalImportScreen((Screen) parent))
                         .currentConfigPresetValues(() -> PresetValues.fromJsonObject(ThermalConfigIO.buildRoot()))
                         .applyPresetValues(values -> ThermalConfigIO.applyRoot(values.toJsonObject()))
                         .configExporter(ThermalConfigIO::buildRoot)
                         .configImporter(ThermalConfigIO::applyRoot)
+                        .tooltipValueResolver((stack, player) -> Map.of())
                         .build()
         );
     }

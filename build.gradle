@@ -114,6 +114,11 @@ dependencies {
     // See integration/toughasnails/ToughAsNailsIntegration.java.
     compileOnly "maven.modrinth:tough-as-nails:${tough_as_nails_version}"
 
+    // Compile-time only: Serene Seasons must remain optional at runtime.
+    // Ecliptic Seasons is hooked by reflection instead; its current jars are compiled for a
+    // newer Java than this mod's toolchain.
+    compileOnly "maven.modrinth:serene-seasons:${serene_seasons_version}"
+
     // Test-scoped only, mirroring the dependencies above: capability-registration
     // tests use stub implementations of the target mods' public API interfaces, which
     // requires these interfaces on the test runtime classpath too (unlike the compileOnly
@@ -150,6 +155,8 @@ tasks.named('processResources', ProcessResources).configure {
         lso_version_range      : lso_version_range,
         cold_sweat_version_range: cold_sweat_version_range,
         tough_as_nails_version_range: tough_as_nails_version_range,
+        ecliptic_seasons_version_range: ecliptic_seasons_version_range,
+        serene_seasons_version_range: serene_seasons_version_range,
         maries_framework_version_range: maries_framework_version_range,
         mod_id                 : mod_id,
         mod_name               : mod_name,

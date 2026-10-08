@@ -15,8 +15,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  *
  * <p>{@link dev.marie.framework.network.GenericStateSyncPayload} doesn't fit here: it's explicitly
  * {@code BlockPos}-keyed (see its own javadoc), and this toggle belongs to the whole persistent HUD
- * panel, not any one block. Mirrors the {@code EnderIOModeRequestPayload}/
- * {@code EnderIOModeResponsePayload} custom-payload pattern instead, minus the response leg: the
+ * panel, not any one block. Uses a dedicated custom payload instead, with no response leg: the
  * client reads its own local {@code ThermalConfig.SYSTEM_ENABLED} directly for display rather than
  * round-tripping a query, which is correct for the common singleplayer/integrated-server case where
  * client and server share the same JVM and {@code ModConfigSpec} instance.

@@ -6,7 +6,7 @@ import dev.marie.framework.ui.persistence.MarieConfigPersistenceProvider;
 
 /**
  * Single shared {@link PersistenceProvider} for every independently-positionable marie-ui
- * component across the whole mod - originally just {@link HeatCoolToggleComponent}, now also
+ * component across the whole mod, e.g.
  * {@code com.marie.thermalsystems.client.hud.ThermalSystemsControlPanel}. Mirrors Nourished's
  * {@code UiStatePersistence}: one {@code thermalsystems-ui-state.json} under config/, keyed by
  * component id, backed by {@link MarieConfigPersistenceProvider}'s own in-memory cache.
@@ -16,8 +16,7 @@ import dev.marie.framework.ui.persistence.MarieConfigPersistenceProvider;
  * {@link MarieConfigPersistenceProvider} against the same underlying file - two independent
  * instances would each hold their own lazily-loaded in-memory cache of that one file, and a
  * {@code save()} on one would silently drop whatever key the other had written but not yet
- * reloaded. Kept in place rather than moved/renamed to avoid unrelated churn on
- * {@link EnderIOClientIntegration}'s existing references.
+ * reloaded.
  */
 public final class EnderIOUiPersistence {
 

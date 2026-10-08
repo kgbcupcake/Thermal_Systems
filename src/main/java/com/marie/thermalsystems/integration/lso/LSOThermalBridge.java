@@ -67,10 +67,10 @@ public final class LSOThermalBridge implements ITemperatureBridge {
     @Override
     public void applyAmbientTemperature(ServerPlayer player, double ambientTemperatureCelsius, UUID sourceId) {
         double delta = ambientTemperatureCelsius - ThermalConfig.LSO_TEMPERATURE_OFFSET.get();
-        if (ThermalConfig.LOGGING_ENABLED.get()) {
+        if (ThermalConfig.LOGGING_ENABLED.get() && LOGGER.isDebugEnabled()) {
             Double previous = LAST_LOGGED_DELTA.put(sourceId, delta);
             if (previous == null || previous.doubleValue() != delta) {
-                LOGGER.info("[MTS] LSOThermalBridge.applyAmbientTemperature player={} ambientC={} delta={} sourceId={}",
+                LOGGER.debug("[MTS] LSOThermalBridge.applyAmbientTemperature player={} ambientC={} delta={} sourceId={}",
                         player.getGameProfile().getName(), ambientTemperatureCelsius, delta, sourceId);
             }
         }

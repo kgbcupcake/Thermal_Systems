@@ -1,12 +1,14 @@
 package com.marie.thermalsystems.radiation;
 
 import com.marie.thermalsystems.api.ThermalSystemsAPI;
+import com.marie.thermalsystems.climate.AmbientTemperature;
 import com.marie.thermalsystems.api.bridge.ITemperatureBridge;
 import com.marie.thermalsystems.api.cooling.CoolingSourceCapabilities;
 import com.marie.thermalsystems.api.cooling.ICoolingSource;
 import com.marie.thermalsystems.api.heating.HeatSourceCapabilities;
 import com.marie.thermalsystems.api.heating.IHeatSource;
 import com.marie.thermalsystems.data.config.ThermalConfig;
+import com.marie.thermalsystems.zone.ZoneSpatialIndex;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
@@ -46,21 +48,26 @@ import java.util.concurrent.ConcurrentHashMap;
  * {@code PlayerTemperatureBridgeHandler} uses for zone-ambient temperature -
  * just a different number feeding the same bridge call. Written generically
  * against {@link IHeatSource}/{@link ICoolingSource}; knows nothing about
- * Ender IO, Mekanism, PneumaticCraft, {@code ClimateZone}, or bindings.
+ * Ender IO, Mekanism, PneumaticCraft, or bindings.
  *
  * <p>{@code getHeatOutput()}/{@code getCoolingOutput()} are rates (degrees
  * Celsius per simulation second), not absolute temperatures, so the summed
  * rate can't be handed to {@link ITemperatureBridge#applyAmbientTemperature}
  * as-is. It's scaled by {@code heatTransferCoefficient} - the same
  * coefficient {@code TemperatureCalculator} applies to a zone's
- * {@code totalHeatOutput} - and added to {@code defaultAmbientTemperature},
- * so one config knob keeps both paths comparably sensitive without this
- * handler reimplementing the zone's stateful convergence simulation.
+ * {@code totalHeatOutput} - and added to the configured default ambient
+ * temperature, so one config knob keeps both paths comparably sensitive
+ * without this handler reimplementing the zone's stateful convergence
+ * simulation. The season shift is deliberately left out of the bridge value:
+ * bridges sum this contribution with {@code PlayerTemperatureBridgeHandler}'s,
+ * which already carries the season (outside a zone) or the zone's own
+ * temperature (inside one), so including it here would count the outdoor
+ * cold a second time - enough to freeze a player standing in a heated room.
  *
  * <p>Every online player gets a bridge call every interval, even one with
  * no tracked source within radius - that call just carries a net radiated
- * rate of 0 (so {@code radiatedTemperature} collapses to
- * {@code defaultAmbientTemperature}). Bridges have no dedicated "remove my
+ * rate of 0 (so the bridge value collapses to the configured default, a
+ * zero delta). Bridges have no dedicated "remove my
  * contribution" call, so skipping the call entirely when a player walks out
  * of range would leave that player's last nonzero contribution stuck
  * permanently under this handler's {@code sourceId} - sending 0 is how a
@@ -69,6 +76,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * this handler and {@code PlayerTemperatureBridgeHandler} already use
  * distinct, fixed {@code sourceId}s (see {@link #SOURCE_ID} below), so
  * zeroing this handler's contribution never touches the other's.
+ *
+ * <p>A player standing inside a zone gets no radiation at all: the zone's
+ * own temperature, already driven by those same sources toward its
+ * thermostat target, is all they feel. Adding radiation on top would count
+ * every heater twice and push the player well past the target they set.
  */
 public final class SourceRadiationTickHandler {
 
@@ -92,7 +104,11 @@ public final class SourceRadiationTickHandler {
      * change, and everything on server stop.
      */
 
-    /** Most recent temperature handed to the bridges per player, updated every interval - read by the debug command. */
+    /**
+     * Most recent felt temperature near sources per player (seasonal ambient plus radiation), updated every
+     * interval - read by the debug command and the config Home page. Not the value handed to the bridges,
+     * which leaves the season out.
+     */
     private final Map<UUID, Double> latestApplied = new ConcurrentHashMap<>();
 
     /**
@@ -129,6 +145,15 @@ public final class SourceRadiationTickHandler {
         debugLineProviders.add(provider);
     }
 
+    /** The temperature last handed to the bridges for {@code playerId}, or {@code null} before the first interval. */
+    public Double appliedTemperature(UUID playerId) {
+        return latestApplied.get(playerId);
+    }
+
+    public boolean hasSourceInRange(UUID playerId) {
+        return hadSourceInRange.contains(playerId);
+    }
+
     @SubscribeEvent
     public void onServerTick(ServerTickEvent.Post event) {
         boolean enabled = ThermalConfig.SYSTEM_ENABLED.get();
@@ -155,7 +180,8 @@ public final class SourceRadiationTickHandler {
             Set<BlockPos> positions = ActiveSourcePositions.getAll(level);
             logIfPositionsEmptyChanged(level, positions.isEmpty());
             for (ServerPlayer player : level.players()) {
-                radiateTo(level, player, positions, radius, bridges);
+                boolean inZone = ZoneSpatialIndex.resolve(level, player.blockPosition()).isPresent();
+                radiateTo(level, player, inZone ? Set.of() : positions, radius, bridges);
             }
         }
     }
@@ -227,7 +253,8 @@ public final class SourceRadiationTickHandler {
      * - several in-range positions sharing a network id (e.g. multiple
      * segments of the same Ender IO conduit network) contribute that
      * network's output exactly once, no matter how many of its positions are
-     * in range. A {@code null} network id (the default for sources with no
+     * in range, at the largest value any of them reports (a conduit's sum
+     * already includes the generator beside it). A {@code null} network id (the default for sources with no
      * network of their own) falls back to deduping by the position itself,
      * preserving today's per-position behavior for non-networked sources.
      */
@@ -247,7 +274,7 @@ public final class SourceRadiationTickHandler {
                 double heatOutput = heatSource.getHeatOutput();
                 if (heatOutput != 0.0) {
                     Object key = heatSource.getNetworkId();
-                    heatByNetwork.putIfAbsent(key != null ? key : pos, heatOutput);
+                    heatByNetwork.merge(key != null ? key : pos, heatOutput, Math::max);
                 }
             }
             ICoolingSource coolingSource = CoolingSourceCapabilities.COOLING_SOURCE.getCapability(level, pos, null, null, null);
@@ -255,7 +282,7 @@ public final class SourceRadiationTickHandler {
                 double coolingOutput = coolingSource.getCoolingOutput();
                 if (coolingOutput != 0.0) {
                     Object key = coolingSource.getNetworkId();
-                    coolingByNetwork.putIfAbsent(key != null ? key : pos, coolingOutput);
+                    coolingByNetwork.merge(key != null ? key : pos, coolingOutput, Math::max);
                 }
             }
         }
@@ -263,11 +290,12 @@ public final class SourceRadiationTickHandler {
         double net = heatByNetwork.values().stream().mapToDouble(Double::doubleValue).sum()
                 - coolingByNetwork.values().stream().mapToDouble(Double::doubleValue).sum();
 
-        double radiatedTemperature = ThermalConfig.DEFAULT_AMBIENT_TEMPERATURE.get()
-                + ThermalConfig.HEAT_TRANSFER_COEFFICIENT.get() * net;
+        double radiated = ThermalConfig.HEAT_TRANSFER_COEFFICIENT.get() * net;
+        double bridgeTemperature = AmbientTemperature.configured() + radiated;
         for (ITemperatureBridge bridge : bridges) {
-            bridge.applyAmbientTemperature(player, radiatedTemperature, SOURCE_ID);
+            bridge.applyAmbientTemperature(player, bridgeTemperature, SOURCE_ID);
         }
+        double radiatedTemperature = AmbientTemperature.at(level, playerPos) + radiated;
         latestApplied.put(player.getUUID(), radiatedTemperature);
         logIfNoLongerInRange(player, anyInRange);
         logIfChanged(player, radiatedTemperature, heatByNetwork.keySet(), coolingByNetwork.keySet());

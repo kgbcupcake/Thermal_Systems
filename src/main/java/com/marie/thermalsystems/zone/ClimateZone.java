@@ -3,8 +3,10 @@ package com.marie.thermalsystems.zone;
 import com.marie.thermalsystems.api.cooling.ICoolingSource;
 import com.marie.thermalsystems.api.heating.IHeatSource;
 import com.marie.thermalsystems.api.zone.IClimateZone;
+import com.marie.thermalsystems.controller.ClimateDemand;
 import com.marie.thermalsystems.controller.ClimateMode;
 import net.minecraft.core.BlockPos;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,14 +19,18 @@ import java.util.UUID;
 public class ClimateZone implements IClimateZone {
 
     private final UUID id;
-    private final String name;
+    private String name;
     private double currentTemp;
-    private final double targetTemp;
+    private double targetTemp;
     private ClimateMode mode;
+    private ClimateDemand demand = ClimateDemand.IDLE;
     private final List<IHeatSource> heatSources = new ArrayList<>();
     private final List<ICoolingSource> coolingSources = new ArrayList<>();
     private BlockPos boundsMin;
     private BlockPos boundsMax;
+    @Nullable
+    private UUID owner;
+    private boolean publicControl;
 
     public ClimateZone(UUID id, String name, double currentTemp, double targetTemp, ClimateMode mode) {
         this.id = Objects.requireNonNull(id, "id");
@@ -44,6 +50,11 @@ public class ClimateZone implements IClimateZone {
         return name;
     }
 
+    /** Renames the zone; callers check the new name isn't taken by another zone in the level. */
+    public void setName(String name) {
+        this.name = Objects.requireNonNull(name, "name");
+    }
+
     @Override
     public double getCurrentTemp() {
         return currentTemp;
@@ -59,6 +70,13 @@ public class ClimateZone implements IClimateZone {
         return targetTemp;
     }
 
+    public void setTargetTemp(double targetTemp) {
+        if (Double.isNaN(targetTemp) || Double.isInfinite(targetTemp)) {
+            throw new IllegalArgumentException("Target temperature must be a finite number, was: " + targetTemp);
+        }
+        this.targetTemp = targetTemp;
+    }
+
     @Override
     public ClimateMode getMode() {
         return mode;
@@ -66,6 +84,34 @@ public class ClimateZone implements IClimateZone {
 
     public void setMode(ClimateMode mode) {
         this.mode = Objects.requireNonNull(mode, "mode");
+    }
+
+    /** What the thermostat asked for on the most recent simulation step. Not persisted. */
+    public ClimateDemand getDemand() {
+        return demand;
+    }
+
+    public void setDemand(ClimateDemand demand) {
+        this.demand = Objects.requireNonNull(demand, "demand");
+    }
+
+    /** The player who created this zone, or {@code null} for a zone only operators may edit. */
+    @Nullable
+    public UUID getOwner() {
+        return owner;
+    }
+
+    public void setOwner(@Nullable UUID owner) {
+        this.owner = owner;
+    }
+
+    /** When true, any player may change this zone's target and mode; bounds and deletion stay owner-only. */
+    public boolean isPublicControl() {
+        return publicControl;
+    }
+
+    public void setPublicControl(boolean publicControl) {
+        this.publicControl = publicControl;
     }
 
     @Override
@@ -137,6 +183,16 @@ public class ClimateZone implements IClimateZone {
      */
     public BlockPos getBoundsMax() {
         return boundsMax;
+    }
+
+    /** Number of blocks inside this zone's bounds, or 0 when it has none. */
+    public long volume() {
+        if (boundsMin == null) {
+            return 0;
+        }
+        return (long) (boundsMax.getX() - boundsMin.getX() + 1)
+                * (boundsMax.getY() - boundsMin.getY() + 1)
+                * (boundsMax.getZ() - boundsMin.getZ() + 1);
     }
 
     public boolean containsPosition(BlockPos pos) {
