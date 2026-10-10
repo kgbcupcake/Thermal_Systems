@@ -96,7 +96,7 @@ final class EnderIONetworkPosition implements IHeatSource, ICoolingSource, IHeat
     /** The zone containing this position, or else the zone the rest of its network is in. */
     @Override
     public Optional<ClimateZone> getControllingZone() {
-        Optional<ClimateZone> own = ZoneSpatialIndex.resolve(level, pos);
+        Optional<ClimateZone> own = ZoneSpatialIndex.resolveNearby(level, pos, ThermalConfig.MACHINE_ROOM_REACH.get());
         return own.isPresent() ? own : networkZone();
     }
 

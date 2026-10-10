@@ -146,7 +146,7 @@ public final class ToughAsNailsBridge implements ITemperatureBridge {
         if (player.level().isClientSide()) {
             return Optional.empty();
         }
-        return ZoneSpatialIndex.resolve(player.level(), player.blockPosition());
+        return ZoneSpatialIndex.resolveNearby(player.level(), player.blockPosition(), ThermalConfig.PLAYER_ROOM_REACH.get());
     }
 
     private double storedValue(UUID playerId) {

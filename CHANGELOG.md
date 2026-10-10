@@ -11,6 +11,11 @@ adheres to the version in [`gradle.properties`](gradle.properties).
 
 ## [Unreleased]
 
+### Added
+- Two Zones config options, `playerRoomReach` and `machineRoomReach` (also in the in-game config
+  screen's Zones page): how many blocks a player, or a fixed machine/conduit/wall thermostat, may
+  sit outside a zone's bounds and still count as belonging to it.
+
 ### Changed
 - Ender IO Stirling Generator and conduit tooltips show one output - heating/cooling/standby with
   the room and target temperature. The separate "Power ... C/s" line is gone.
@@ -18,6 +23,16 @@ adheres to the version in [`gradle.properties`](gradle.properties).
 ### Fixed
 - Standing in a heated zone no longer freezes you when it's cold outside. The outdoor seasonal
   temperature was being added on top of the room's temperature (and counted twice outside zones).
+- Standing inside a heated/cooled room no longer gets treated as being outside it. Zone membership
+  for the player, Cold Sweat, Tough As Nails, and direct source radiation used an exact-bounds
+  check against the player's feet position, so a zone marked out at floor level (the common case)
+  missed the player entirely - the thermostat showed the room at target while the player still felt
+  outdoor/seasonal temperature. Now resolves to the nearest zone within `playerRoomReach` blocks
+  first, the same tolerance a wall thermostat already used for its own room.
+- Ender IO generators and conduit networks resolve their controlling zone with the same
+  `machineRoomReach` tolerance, instead of requiring the generator/conduit block itself to sit
+  exactly inside the zone's bounds - reduces output flicker for a machine placed just outside a
+  room's marked box.
 - Cold Sweat: inside a zone the world temperature you feel is now the room's own temperature,
   instead of a small nudge on top of Cold Sweat's outdoor biome/depth/season temperature, so a
   heated room is actually warm in winter. Rooms between about 50°F and 100°F (10-38°C) are

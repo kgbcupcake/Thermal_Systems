@@ -187,6 +187,10 @@
   "config.thermalsystems.zonesMaxZoneVolume.desc": "Largest zone (in blocks) a non-op player can mark out with the Zone Gadget.",
   "config.thermalsystems.zonesMaxZonesPerPlayer": "Max Zones Per Player",
   "config.thermalsystems.zonesMaxZonesPerPlayer.desc": "How many zones each non-op player may own. 0 = unlimited.",
+  "config.thermalsystems.zonesPlayerRoomReach": "Player Room Reach",
+  "config.thermalsystems.zonesPlayerRoomReach.desc": "Blocks a player's feet may fall outside a zone's bounds and still count as standing in it. A zone marked out at floor level is only as tall as that box, so a player's feet - one block above the floor - can land just outside it. Keep this small so merely walking near a room isn't credited with its temperature.",
+  "config.thermalsystems.zonesMachineRoomReach": "Machine Room Reach",
+  "config.thermalsystems.zonesMachineRoomReach.desc": "Blocks a fixed machine, conduit, or wall thermostat may sit outside a zone's bounds and still count as belonging to it - covers a generator or conduit run feeding a room from just outside its walls.",
 
   "itemGroup.thermalsystems": "Thermal Systems",
   "block.thermalsystems.wall_thermostat": "Wall Thermostat",

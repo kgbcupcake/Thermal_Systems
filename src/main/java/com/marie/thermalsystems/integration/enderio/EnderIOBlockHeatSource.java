@@ -72,7 +72,7 @@ final class EnderIOBlockHeatSource implements IHeatSource, ICoolingSource, IHeat
     /** Its own zone, or else the zone of the conduit network it feeds. */
     @Override
     public Optional<ClimateZone> getControllingZone() {
-        Optional<ClimateZone> own = ZoneSpatialIndex.resolve(level, pos);
+        Optional<ClimateZone> own = ZoneSpatialIndex.resolveNearby(level, pos, ThermalConfig.MACHINE_ROOM_REACH.get());
         if (own.isPresent()) {
             return own;
         }

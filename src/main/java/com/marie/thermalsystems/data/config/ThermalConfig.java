@@ -36,6 +36,8 @@ public final class ThermalConfig {
 
     public static final ModConfigSpec.IntValue MAX_ZONE_VOLUME;
     public static final ModConfigSpec.IntValue MAX_ZONES_PER_PLAYER;
+    public static final ModConfigSpec.IntValue PLAYER_ROOM_REACH;
+    public static final ModConfigSpec.IntValue MACHINE_ROOM_REACH;
 
     public static final ModConfigSpec.BooleanValue PNEUMATICCRAFT_ENABLED;
     public static final ModConfigSpec.DoubleValue PNEUMATICCRAFT_REFERENCE_TEMPERATURE_KELVIN;
@@ -181,6 +183,19 @@ public final class ThermalConfig {
         MAX_ZONES_PER_PLAYER = builder
                 .comment("Most zones a non-operator may own per dimension. 0 means unlimited.")
                 .defineInRange("maxZonesPerPlayer", 16, 0, 10000);
+
+        PLAYER_ROOM_REACH = builder
+                .comment("Blocks a player's feet may fall outside a zone's bounds and still count as standing in it -",
+                        "a zone marked out at floor level is only as tall as that box, so a player's feet (one block",
+                        "above the floor they're standing on) can land just outside it. Keep this small so a player",
+                        "merely walking near a room isn't credited with its temperature.")
+                .defineInRange("playerRoomReach", 2, 0, 32);
+
+        MACHINE_ROOM_REACH = builder
+                .comment("Blocks a fixed machine, conduit, or wall thermostat may sit outside a zone's bounds and",
+                        "still count as belonging to it - covers a generator or conduit run feeding a room from",
+                        "just outside its walls (through a wall, under a floor).")
+                .defineInRange("machineRoomReach", 6, 0, 32);
 
         builder.pop();
 

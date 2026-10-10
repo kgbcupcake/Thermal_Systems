@@ -72,7 +72,8 @@ public final class PlayerTemperatureBridgeHandler {
 
         for (ServerLevel level : event.getServer().getAllLevels()) {
             for (ServerPlayer player : level.players()) {
-                Optional<ClimateZone> zone = ZoneSpatialIndex.resolve(level, player.blockPosition());
+                Optional<ClimateZone> zone = ZoneSpatialIndex.resolveNearby(level, player.blockPosition(),
+                        ThermalConfig.PLAYER_ROOM_REACH.get());
                 double temperature = zone.map(ClimateZone::getCurrentTemp)
                         .orElseGet(() -> AmbientTemperature.at(level, player.blockPosition()));
                 for (ITemperatureBridge bridge : bridges) {

@@ -2,6 +2,7 @@ package com.marie.thermalsystems.block;
 
 import com.marie.thermalsystems.controller.ClimateDemand;
 import com.marie.thermalsystems.controller.ClimateMode;
+import com.marie.thermalsystems.data.config.ThermalConfig;
 import com.marie.thermalsystems.registry.ThermalRegistries;
 import com.marie.thermalsystems.zone.ClimateZone;
 import com.marie.thermalsystems.zone.ZoneSpatialIndex;
@@ -22,7 +23,7 @@ import java.util.UUID;
 
 /**
  * Server side: every {@link #REFRESH_TICKS} ticks, looks up the zone containing this thermostat (or
- * the closest one within {@link #ROOM_REACH} blocks) and
+ * the closest one within {@link ThermalConfig#MACHINE_ROOM_REACH} blocks) and
  * copies what the display needs (name, temperatures, mode, demand) into fields that are synced to
  * nearby clients - but only when something visible actually changed, so an idle room sends nothing.
  * Client side: holds the last synced copy for {@code WallThermostatRenderer} and for opening the
@@ -32,8 +33,6 @@ import java.util.UUID;
 public class WallThermostatBlockEntity extends BlockEntity {
 
     private static final int REFRESH_TICKS = 10;
-    /** How far outside a zone's bounds the thermostat still counts as mounted in that room. */
-    private static final int ROOM_REACH = 6;
 
     private static final String KEY_ZONE_ID = "ZoneId";
     private static final String KEY_ZONE_NAME = "ZoneName";
@@ -67,7 +66,7 @@ public class WallThermostatBlockEntity extends BlockEntity {
         if (level == null || level.isClientSide) {
             return;
         }
-        Optional<ClimateZone> zone = ZoneSpatialIndex.resolveNearby(level, worldPosition, ROOM_REACH);
+        Optional<ClimateZone> zone = ZoneSpatialIndex.resolveNearby(level, worldPosition, ThermalConfig.MACHINE_ROOM_REACH.get());
         UUID newId = zone.map(ClimateZone::getId).orElse(null);
         String newName = zone.map(ClimateZone::getName).orElse("");
         double newCurrent = zone.map(ClimateZone::getCurrentTemp).orElse(0.0);

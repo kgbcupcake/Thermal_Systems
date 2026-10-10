@@ -180,7 +180,8 @@ public final class SourceRadiationTickHandler {
             Set<BlockPos> positions = ActiveSourcePositions.getAll(level);
             logIfPositionsEmptyChanged(level, positions.isEmpty());
             for (ServerPlayer player : level.players()) {
-                boolean inZone = ZoneSpatialIndex.resolve(level, player.blockPosition()).isPresent();
+                boolean inZone = ZoneSpatialIndex.resolveNearby(level, player.blockPosition(),
+                        ThermalConfig.PLAYER_ROOM_REACH.get()).isPresent();
                 radiateTo(level, player, inZone ? Set.of() : positions, radius, bridges);
             }
         }

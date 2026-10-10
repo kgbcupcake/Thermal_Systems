@@ -91,7 +91,8 @@ public final class ColdSweatThermalBridge implements ITemperatureBridge {
             total += contribution;
         }
 
-        Optional<ClimateZone> zone = ZoneSpatialIndex.resolve(player.level(), player.blockPosition());
+        Optional<ClimateZone> zone = ZoneSpatialIndex.resolveNearby(player.level(), player.blockPosition(),
+                ThermalConfig.PLAYER_ROOM_REACH.get());
 
         if (ThermalConfig.LOGGING_ENABLED.get() && LOGGER.isDebugEnabled()) {
             Double previous = LAST_LOGGED_DELTA.put(sourceId, delta);

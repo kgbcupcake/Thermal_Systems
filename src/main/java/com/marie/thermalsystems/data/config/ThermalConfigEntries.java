@@ -123,6 +123,8 @@ public final class ThermalConfigEntries {
 
         integer(e, "zones", "maxZoneVolume", ThermalConfig.MAX_ZONE_VOLUME, 64, 262144, BLOCKS);
         integer(e, "zones", "maxZonesPerPlayer", ThermalConfig.MAX_ZONES_PER_PLAYER, 0, 100, "");
+        integer(e, "zones", "playerRoomReach", ThermalConfig.PLAYER_ROOM_REACH, 0, 32, BLOCKS);
+        integer(e, "zones", "machineRoomReach", ThermalConfig.MACHINE_ROOM_REACH, 0, 32, BLOCKS);
 
         bool(e, "pneumaticcraft", "enabled", ThermalConfig.PNEUMATICCRAFT_ENABLED);
         kelvin(e, "pneumaticcraft", "referenceTemperatureKelvin", ThermalConfig.PNEUMATICCRAFT_REFERENCE_TEMPERATURE_KELVIN);
